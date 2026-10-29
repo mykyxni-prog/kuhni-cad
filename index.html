@@ -26,7 +26,7 @@
 <div class="rowbtn"><button class="btn primary" id="applyBtn">Применить размеры</button></div><div class="rowbtn"><button class="btn" id="minusX">− X</button><button class="btn" id="plusX">＋ X</button></div><div class="rowbtn"><button class="btn" id="minusY">− Y</button><button class="btn" id="plusY">＋ Y</button></div>
 <div class="muted" style="margin-top:10px">Размеры задаются в миллиметрах. Координаты — положение центра детали относительно пола и центра сцены.</div></div>
 <h3>Подсказка</h3><div class="muted">Чтобы сделать фасад 596 × 717 × 18 мм: нажми «Фасад», выбери его и введи размеры справа. Фасад не привязан к готовому шкафу и удаляется отдельно.</div>
-</section></main>
+</section></main><div class="context-menu" id="contextMenu"><button id="ctxRotateY">↻ Повернуть вокруг Y на 90°</button><button id="ctxRotateX">↻ Наклонить вокруг X на 90°</button><button id="ctxRotateZ">↻ Повернуть вокруг Z на 90°</button><button id="ctxDimensions">↔ Изменить размеры</button><button id="ctxColor">🎨 Изменить цвет</button><div class="context-colors" id="ctxColors" style="display:none"><button data-color="oak" title="Дуб" style="background:#b79a70"></button><button data-color="milk" title="Молочный" style="background:#e5dfd1"></button><button data-color="green" title="Зелёный" style="background:#53684c"></button><button data-color="graphite" title="Графит" style="background:#3b403e"></button><button data-color="stone" title="Камень" style="background:#aaa99f"></button></div></div>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}</script>
 <script type="module">
 import * as THREE from 'three';
