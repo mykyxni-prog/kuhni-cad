@@ -1,88 +1,56 @@
 <!doctype html>
-<html lang="ru">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Кухни со вкусом — мебельный CAD</title>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Кухни со вкусом — 3D CAD</title>
 <style>
 :root{--bg:#171a1b;--panel:#222728;--panel2:#292f30;--green:#8ac440;--text:#f2f4f1;--muted:#aab3ad;--line:#3b4442;--input:#151819}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
-header{padding:18px 22px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
-.brand{font-weight:800;letter-spacing:.04em}.brand span{color:var(--green)}.sub{color:var(--muted);font-size:12px;margin-top:3px}
-main{padding:18px;display:grid;grid-template-columns:280px minmax(0,1fr);gap:16px;max-width:1400px;margin:auto}
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;min-width:0}
-h2{font-size:15px;margin:0 0 14px}h3{font-size:13px;color:var(--muted);margin:18px 0 8px}
-.field{display:grid;grid-template-columns:1fr 100px;gap:10px;align-items:center;margin:10px 0;color:#dfe4df}
-input,select{width:100%;background:var(--input);color:var(--text);border:1px solid #46504c;border-radius:7px;padding:9px;font:inherit}
-input:focus,select:focus{outline:1px solid var(--green);border-color:var(--green)}
-.unit{color:var(--muted);font-size:11px}.btn{border:0;border-radius:8px;padding:10px 13px;background:var(--green);color:#14200a;font-weight:750;cursor:pointer}.btn.secondary{background:#343c39;color:var(--text);border:1px solid #4a5550}
-.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.stage{min-height:450px;background:radial-gradient(ellipse at center,#303735 0%,#1b201f 68%);border-radius:10px;display:flex;align-items:center;justify-content:center;overflow:hidden}
-svg{width:100%;height:100%;max-height:560px;min-height:380px}.legend{display:flex;gap:16px;flex-wrap:wrap;color:var(--muted);font-size:12px;margin-top:10px}.dot{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px}
-.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px}.stat{background:var(--panel2);border-radius:9px;padding:12px}.stat small{color:var(--muted);display:block}.stat strong{font-size:20px}
-.table-wrap{overflow:auto;margin-top:14px}table{border-collapse:collapse;width:100%;font-size:12px;white-space:nowrap}th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line)}th{color:var(--muted);font-weight:600}
-.note{font-size:12px;color:var(--muted);margin-top:12px}.status{color:var(--green);font-size:12px;font-weight:700}
-@media(max-width:780px){main{grid-template-columns:1fr;padding:10px}header{padding:14px}.stage{min-height:330px}.stats{grid-template-columns:repeat(3,minmax(0,1fr))}.stat strong{font-size:16px}}
-</style>
-</head>
-<body>
-<header><div><div class="brand"><span>КУХНИ</span> СО ВКУСОМ <span>· CAD</span></div><div class="sub">Конструктор корпусной мебели · первая рабочая версия</div></div><div class="status">● ЛОКАЛЬНЫЙ РАСЧЁТ</div></header>
-<main>
-<section class="panel">
-<h2>Параметры корпуса</h2>
-<div class="field"><label for="w">Ширина</label><input id="w" type="number" min="200" max="3000" step="10" value="800"></div>
-<div class="field"><label for="h">Высота</label><input id="h" type="number" min="200" max="3000" step="10" value="2000"></div>
-<div class="field"><label for="d">Глубина</label><input id="d" type="number" min="150" max="1200" step="10" value="600"></div>
-<div class="field"><label for="t">Толщина ЛДСП</label><input id="t" type="number" min="8" max="30" step="1" value="16"></div>
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}header{padding:18px 22px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}.brand{font-weight:800;letter-spacing:.04em}.brand span{color:var(--green)}.sub{color:var(--muted);font-size:12px;margin-top:3px}main{padding:18px;display:grid;grid-template-columns:280px minmax(0,1fr);gap:16px;max-width:1500px;margin:auto}.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;min-width:0}h2{font-size:15px;margin:0 0 14px}.field{display:grid;grid-template-columns:1fr 100px;gap:10px;align-items:center;margin:10px 0;color:#dfe4df}input,select{width:100%;background:var(--input);color:var(--text);border:1px solid #46504c;border-radius:7px;padding:9px;font:inherit}.btn{border:0;border-radius:8px;padding:10px 13px;background:var(--green);color:#14200a;font-weight:750;cursor:pointer}.btn.secondary{background:#343c39;color:var(--text);border:1px solid #4a5550}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.stage{height:min(65vh,650px);min-height:390px;background:radial-gradient(ellipse at center,#303735 0%,#1b201f 70%);border-radius:10px;overflow:hidden;position:relative;touch-action:none}.stage canvas{display:block;width:100%;height:100%;outline:none}.hint{position:absolute;left:12px;bottom:10px;background:#111a;color:#dfe4df;padding:7px 10px;border-radius:7px;font-size:12px;pointer-events:none}.status{color:var(--green);font-size:12px;font-weight:700}.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px}.stat{background:var(--panel2);border-radius:9px;padding:12px}.stat small{color:var(--muted);display:block}.stat strong{font-size:20px}.table-wrap{overflow:auto;margin-top:14px}table{border-collapse:collapse;width:100%;font-size:12px;white-space:nowrap}th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line)}th{color:var(--muted);font-weight:600}.note{font-size:12px;color:var(--muted);margin-top:12px}.legend{font-size:12px;color:var(--muted);margin:8px 0}@media(max-width:780px){main{grid-template-columns:1fr;padding:10px}header{padding:14px}.stage{height:430px;min-height:330px}.stats{grid-template-columns:repeat(3,minmax(0,1fr))}.stat strong{font-size:16px}}
+</style></head><body>
+<header><div><div class="brand"><span>КУХНИ</span> СО ВКУСОМ <span>· CAD</span></div><div class="sub">3D-конструктор корпусной мебели · вращение и текстуры</div></div><div class="status" id="status">● ЗАГРУЗКА 3D…</div></header>
+<main><section class="panel"><h2>Параметры корпуса</h2>
+<div class="field"><label for="w">Ширина, мм</label><input id="w" type="number" min="200" max="3000" step="10" value="800"></div>
+<div class="field"><label for="h">Высота, мм</label><input id="h" type="number" min="200" max="3000" step="10" value="2000"></div>
+<div class="field"><label for="d">Глубина, мм</label><input id="d" type="number" min="150" max="1200" step="10" value="600"></div>
+<div class="field"><label for="t">Толщина ЛДСП, мм</label><input id="t" type="number" min="8" max="30" step="1" value="16"></div>
 <div class="field"><label for="shelves">Полки внутри</label><input id="shelves" type="number" min="0" max="12" step="1" value="3"></div>
 <div class="field"><label for="back">Задняя стенка</label><select id="back"><option value="1">Есть, ХДФ</option><option value="0">Нет</option></select></div>
-<div class="field"><label for="material">Декор корпуса</label><select id="material"><option value="#b99a6a">Дуб натуральный</option><option value="#a9aaa2">Серый камень</option><option value="#e5dfd1">Молочный</option><option value="#53684c">Зелёный</option><option value="#373b3a">Графит</option></select></div>
-<div class="actions"><button class="btn" id="update">Перестроить</button><button class="btn secondary" id="reset">Сбросить</button></div>
-<div class="note">Размеры задаются в миллиметрах. Это начальный конструктор: визуализация и предварительный список деталей. Перед производством нужно добавить выбранную схему сборки, кромку и технологические припуски.</div>
-</section>
-<section class="panel">
-<h2>3D-предпросмотр корпуса <span class="unit">· схематическая аксонометрия</span></h2>
-<div class="stage"><svg id="view" viewBox="0 0 800 520" role="img" aria-label="Аксонометрическая схема шкафа"></svg></div>
-<div class="legend"><span><i class="dot" style="background:#b99a6a"></i>Корпус</span><span><i class="dot" style="background:#d7d1c3"></i>Полки</span><span>Габариты указаны в мм</span></div>
-<div class="stats"><div class="stat"><small>Деталей</small><strong id="count">7</strong></div><div class="stat"><small>Площадь ЛДСП</small><strong id="area">3,00 м²</strong></div><div class="stat"><small>Объём корпуса</small><strong id="volume">0,96 м³</strong></div></div>
-<div class="table-wrap"><table><thead><tr><th>Деталь</th><th>Кол-во</th><th>Длина, мм</th><th>Ширина, мм</th><th>Материал</th></tr></thead><tbody id="parts"></tbody></table></div>
-<div class="note">Расчёт пока считает две боковины, верх/низ между боковинами, полки и при наличии заднюю стенку. Размеры деталей предварительные; фасады, кромка, присадка и оптимизация раскроя будут следующими модулями.</div>
-</section>
-</main>
-<script>
-const $=id=>document.getElementById(id);
-const fmt=n=>Math.round(n).toLocaleString('ru-RU');
-function draw(){
- let W=Math.max(200,Math.min(3000,+$('w').value||800)),H=Math.max(200,Math.min(3000,+$('h').value||2000)),D=Math.max(150,Math.min(1200,+$('d').value||600)),T=Math.max(8,Math.min(30,+$('t').value||16)),N=Math.max(0,Math.min(12,+$('shelves').value||0)),back=$('back').value==='1',color=$('material').value;
- $('w').value=W;$('h').value=H;$('d').value=D;$('t').value=T;$('shelves').value=N;
- // Axonometric projection, fitted to the viewport
- const sx= Math.min(0.18,420/(W+D*.48)), sy=Math.min(.18,390/H), scale=Math.min(sx,sy);
- const ww=W*scale, hh=H*scale, dd=D*scale*.48, dx=400-ww/2-dd*.25, top=65+(390-hh-dd*.4)/2;
- const P=(x,y,z)=>[dx+x*scale+z*scale*.48,top+(H-y)*scale+z*scale*.4];
- const poly=(pts,fill,stroke='#101413',sw=1.5)=>'<polygon points="'+pts.map(p=>p.join(',')).join(' ')+'" fill="'+fill+'" stroke="'+stroke+'" stroke-width="'+sw+'"/>';
- let out='';
- let A=P(0,H,0),B=P(W,H,0),C=P(W,0,0),E=P(0,0,0),A2=P(0,H,D),B2=P(W,H,D),C2=P(W,0,D),E2=P(0,0,D);
- out+=poly([A,A2,E2,E],'#69705f');out+=poly([B,B2,C2,C],shade(color,-23));out+=poly([A,B,B2,A2],shade(color,12));out+=poly([A,E,C,B],shade(color,-8));
- // visible inner opening / shelves as schematic front-facing interior
- const innerL=T,innerR=W-T,innerTop=H-T,innerBot=T;
- out+=poly([P(innerL,innerTop,0),P(innerR,innerTop,0),P(innerR,innerBot,0),P(innerL,innerBot,0)],shade(color,6),'#101413',1);
- for(let i=1;i<=N;i++){let y=innerBot+(innerTop-innerBot)*i/(N+1);out+=poly([P(innerL,y,0),P(innerR,y,0),P(innerR,y-T,0),P(innerL,y-T,0)],'#d7d1c3','#5e625c',1);}
- // dimension labels
- const label=(x,y,txt)=>'<text x="'+x+'" y="'+y+'" fill="#f4f5ef" font-size="14" font-weight="650" text-anchor="middle">'+txt+'</text>';
- out+=label(400,top+hh+dd*.4+34,fmt(W)+' мм');out+=label(dx-25,top+hh*.52,fmt(H)+' мм');out+='<text x="'+(dx+ww+dd*.7)+'" y="'+(top+hh*.6)+'" fill="#f4f5ef" font-size="13">'+fmt(D)+'</text>';
- $('view').innerHTML=out;
- let parts=[['Боковина',2,H,D],['Верхняя крышка',1,W-2*T,D],['Дно',1,W-2*T,D]];
- for(let i=1;i<=N;i++)parts.push(['Полка '+i,1,W-2*T,D]);
- if(back)parts.push(['Задняя стенка ХДФ',1,H,W]);
- $('parts').innerHTML=parts.map(p=>'<tr><td>'+p[0]+'</td><td>'+p[1]+'</td><td>'+fmt(p[2])+'</td><td>'+fmt(p[3])+'</td><td>'+(p[0].includes('ХДФ')?'ХДФ':'ЛДСП '+T+' мм')+'</td></tr>').join('');
- $('count').textContent=parts.reduce((s,p)=>s+p[1],0);
- const area=parts.filter(p=>!p[0].includes('ХДФ')).reduce((s,p)=>s+p[1]*p[2]*p[3]/1e6,0);
- $('area').textContent=area.toLocaleString('ru-RU',{maximumFractionDigits:2})+' м²';
- $('volume').textContent=(W*H*D/1e9).toLocaleString('ru-RU',{maximumFractionDigits:2})+' м³';
-}
-function shade(hex,amt){let n=parseInt(hex.slice(1),16),r=Math.max(0,Math.min(255,(n>>16)+amt)),g=Math.max(0,Math.min(255,((n>>8)&255)+amt)),b=Math.max(0,Math.min(255,(n&255)+amt));return '#'+(1<<24|r<<16|g<<8|b).toString(16).slice(1)}
-$('update').addEventListener('click',draw);['w','h','d','t','shelves','back','material'].forEach(id=>$(id).addEventListener('change',draw));
-$('reset').addEventListener('click',()=>{Object.assign($('w'),{value:800});$('h').value=2000;$('d').value=600;$('t').value=16;$('shelves').value=3;$('back').value='1';$('material').value='#b99a6a';draw()});
-draw();
-</script>
-</body>
-</html>
+<div class="field"><label for="material">Материал</label><select id="material"><option value="oak">ЛДСП — дуб натуральный</option><option value="stone">Серый камень</option><option value="milk">Молочный матовый</option><option value="green">Зелёный матовый</option><option value="graphite">Графит матовый</option></select></div>
+<div class="actions"><button class="btn" id="update">Перестроить</button><button class="btn secondary" id="reset">Сбросить</button><button class="btn secondary" id="home">Вид спереди</button></div>
+<div class="note">Вращение: зажми левую кнопку мыши и двигай мышь. Колесо — приблизить/отдалить. Правая кнопка — перемещение камеры. На телефоне — свайп и щипок двумя пальцами.</div>
+<div class="note">Дальше можно развить: отдельные фасады, кромка, фурнитура, присадка и точный раскрой. Текущие расчёты предварительные.</div>
+</section><section class="panel"><h2>3D-модель <span class="note">· можно вращать по всем осям</span></h2><div class="stage" id="stage"><div class="hint">Зажми и вращай · колесо — масштаб</div></div><div class="legend">Текстура нанесена на поверхности деталей; корпус открыт спереди, чтобы были видны полки и внутренняя структура.</div>
+<div class="stats"><div class="stat"><small>Деталей</small><strong id="count">7</strong></div><div class="stat"><small>Площадь ЛДСП</small><strong id="area">—</strong></div><div class="stat"><small>Объём корпуса</small><strong id="volume">—</strong></div></div>
+<div class="table-wrap"><table><thead><tr><th>Деталь</th><th>Кол-во</th><th>Длина, мм</th><th>Ширина, мм</th><th>Материал</th></tr></thead><tbody id="parts"></tbody></table></div></section></main>
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+import {OrbitControls} from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js';
+const $=id=>document.getElementById(id),fmt=n=>Math.round(n).toLocaleString('ru-RU');
+const stage=$('stage'),scene=new THREE.Scene();scene.background=new THREE.Color('#202624');
+const camera=new THREE.PerspectiveCamera(42,1,1,20000);camera.up.set(0,1,0);
+const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.15;stage.appendChild(renderer.domElement);
+const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.dampingFactor=.07;controls.rotateSpeed=.8;controls.zoomSpeed=1;controls.target.set(0,900,0);
+scene.add(new THREE.HemisphereLight(0xffffff,0x45483e,2.1));const key=new THREE.DirectionalLight(0xffedcf,3.0);key.position.set(1800,2600,2200);scene.add(key);const fill=new THREE.DirectionalLight(0xdce8ff,1.3);fill.position.set(-1600,1000,-1800);scene.add(fill);
+const grid=new THREE.GridHelper(5000,50,0x536057,0x39423d);grid.position.y=-2;scene.add(grid);
+let model=new THREE.Group();scene.add(model);let textureCache={};
+function makeTexture(kind){if(textureCache[kind])return textureCache[kind];const c=document.createElement('canvas');c.width=512;c.height=512;const ctx=c.getContext('2d');
+if(kind==='oak'){ctx.fillStyle='#b79a70';ctx.fillRect(0,0,512,512);for(let i=0;i<75;i++){let x=Math.random()*512,w=1+Math.random()*5;ctx.strokeStyle=['#9c7a50','#d2b78d','#aa8b60','#806744'][i%4];ctx.globalAlpha=.12+Math.random()*.22;ctx.lineWidth=w;ctx.beginPath();ctx.moveTo(x,0);ctx.bezierCurveTo(x-18,140,x+22,330,x-6,512);ctx.stroke()}for(let i=0;i<18;i++){let x=Math.random()*512,y=Math.random()*512;ctx.globalAlpha=.2;ctx.strokeStyle='#765c3d';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(x,y,3+Math.random()*8,8+Math.random()*22,0,0,Math.PI*2);ctx.stroke()}}
+else {const colors={stone:['#aaa99f','#85857d'],milk:['#e5dfd1','#d4cfc2'],green:['#53684c','#43553e'],graphite:['#3b403e','#292e2c']};let a=colors[kind];ctx.fillStyle=a[0];ctx.fillRect(0,0,512,512);if(kind==='stone'){for(let i=0;i<1000;i++){ctx.fillStyle=Math.random()>.5?a[1]:'#d4d1c7';ctx.globalAlpha=.06+Math.random()*.15;ctx.fillRect(Math.random()*512,Math.random()*512,1+Math.random()*4,1+Math.random()*3)}}else {ctx.globalAlpha=.06;ctx.strokeStyle=a[1];for(let i=0;i<300;i++){let y=Math.random()*512;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(512,y+Math.random()*2);ctx.stroke()}}}
+ctx.globalAlpha=1;const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;tex.wrapS=tex.wrapT=THREE.RepeatWrapping;tex.anisotropy=renderer.capabilities.getMaxAnisotropy();textureCache[kind]=tex;return tex}
+function mat(kind,repeatX=1,repeatY=1){const tex=makeTexture(kind);tex.repeat.set(repeatX,repeatY);return new THREE.MeshStandardMaterial({map:tex,roughness:kind==='oak'?.72:.84,metalness:0})}
+function addBoard(w,h,d,x,y,z,kind,rotateWood=false){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat(kind,Math.max(1,w/250),Math.max(1,h/250)));m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;model.add(m);return m}
+function build(){const W=Math.max(200,Math.min(3000,+$('w').value||800)),H=Math.max(200,Math.min(3000,+$('h').value||2000)),D=Math.max(150,Math.min(1200,+$('d').value||600)),T=Math.max(8,Math.min(30,+$('t').value||16)),N=Math.max(0,Math.min(12,+$('shelves').value||0)),back=$('back').value==='1',kind=$('material').value;
+$('w').value=W;$('h').value=H;$('d').value=D;$('t').value=T;$('shelves').value=N;scene.remove(model);model=new THREE.Group();scene.add(model);
+const x0=-W/2,z0=-D/2;addBoard(T,H,D,x0+T/2,H/2,z0+D/2,kind);addBoard(T,H,D,W/2-T/2,H/2,z0+D/2,kind);addBoard(W-2*T,T,D,0,H-T/2,z0+D/2,kind);addBoard(W-2*T,T,D,0,T/2,z0+D/2,kind);
+for(let i=1;i<=N;i++){let y=T+(H-2*T)*i/(N+1);addBoard(W-2*T,T,D,0,y,z0+D/2,kind)}
+if(back){const b=new THREE.Mesh(new THREE.BoxGeometry(W,H,5),new THREE.MeshStandardMaterial({color:'#c7c2b4',roughness:.9}));b.position.set(0,H/2,-D/2+2.5);model.add(b)}
+// Light edge strips make board thickness visible
+const edgeMat=new THREE.MeshStandardMaterial({color:kind==='oak'?'#8b6d49':kind==='green'?'#35432f':kind==='graphite'?'#252927':kind==='milk'?'#bcb6a8':'#77776f',roughness:.8});
+function edge(w,h,d,x,y,z){let o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),edgeMat);o.position.set(x,y,z);model.add(o)}
+// Cabinet is open at front; board thickness and inner shelf structure remain visible from any angle.
+const parts=[['Боковина',2,H,D],['Верхняя крышка',1,W-2*T,D],['Дно',1,W-2*T,D]];for(let i=1;i<=N;i++)parts.push(['Полка '+i,1,W-2*T,D]);if(back)parts.push(['Задняя стенка ХДФ',1,H,W]);
+$('parts').innerHTML=parts.map(p=>'<tr><td>'+p[0]+'</td><td>'+p[1]+'</td><td>'+fmt(p[2])+'</td><td>'+fmt(p[3])+'</td><td>'+(p[0].includes('ХДФ')?'ХДФ':'ЛДСП '+T+' мм')+'</td></tr>').join('');
+$('count').textContent=parts.reduce((s,p)=>s+p[1],0);const area=parts.filter(p=>!p[0].includes('ХДФ')).reduce((s,p)=>s+p[1]*p[2]*p[3]/1e6,0);$('area').textContent=area.toLocaleString('ru-RU',{maximumFractionDigits:2})+' м²';$('volume').textContent=(W*H*D/1e9).toLocaleString('ru-RU',{maximumFractionDigits:2})+' м³';
+const maxDim=Math.max(W,H,D);controls.target.set(0,H/2,0);camera.position.set(maxDim*1.25,H*.8,maxDim*1.8);camera.near=Math.max(1,maxDim/1000);camera.far=maxDim*20;camera.updateProjectionMatrix();controls.update();resize()}
+function resize(){const w=stage.clientWidth,h=stage.clientHeight;if(!w||!h)return;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}
+new ResizeObserver(resize).observe(stage);window.addEventListener('resize',resize);function animate(){requestAnimationFrame(animate);controls.update();renderer.render(scene,camera)}animate();
+$('update').addEventListener('click',build);['w','h','d','t','shelves','back','material'].forEach(id=>$(id).addEventListener('change',build));$('reset').addEventListener('click',()=>{$('w').value=800;$('h').value=2000;$('d').value=600;$('t').value=16;$('shelves').value=3;$('back').value='1';$('material').value='oak';build()});$('home').addEventListener('click',()=>{const W=+$('w').value,H=+$('h').value,D=+$('d').value,m=Math.max(W,H,D);controls.target.set(0,H/2,0);camera.position.set(0,H*.55,m*2.8);camera.lookAt(0,H/2,0);controls.update()});
+try{build();$('status').textContent='● 3D ГОТОВ';}catch(e){$('status').textContent='Ошибка 3D';console.error(e)}
+</script></body></html>
