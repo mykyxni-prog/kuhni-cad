@@ -53,8 +53,8 @@ addPart('shelf','Полка',innerW,t,d-5,0,bottomY+t+sideH/2,z,'oak',t);
 addPart('back','Задняя стенка',w-3,h-3,4,0,bottomY+(h-3)/2,-d/2+2,'milk',4);
 addPart('panel','Фальшпанель 400',400,h,16,-w/2+200,legsH+h/2,frontZ,'oak',16);
 addPart('panel','Фальшпанель 200',200,h,16,-w/2+400+100,legsH+h/2,frontZ,'milk',16);
-addPart('panel','Наружная планка фасадная 720×24',24,h,16,-w/2+400+200-12,legsH+h/2,frontZ,'milk',16);
-addPart('panel','Наружная планка корпусная 720×24',24,h,16,w/2-12,legsH+h/2,frontZ,'oak',16);
+addPart('panel','Наружная планка фасадная 720×24',24,h,16,-w/2+400+200-12,legsH+h/2,frontZ+16,'milk',16);
+addPart('panel','Наружная планка корпусная 720×24',24,h,16,w/2-12,legsH+h/2,frontZ+16,'oak',16);
 addPart('facade','Фасад',447,h-3,16,-w/2+400+200+450/2,legsH+(h-3)/2,frontZ,'milk',16);
 for(const lx of [-w/2+55,w/2-55])for(const lz of [-d/2+55,d/2-55]){addRoundPart('Опора Volpato 31 — основание',48,10,lx,5,lz,'graphite');addRoundPart('Опора Volpato 31 — стойка',28,82,lx,51,lz,'graphite');addPart('leg','Опора Volpato 31 — верхнее крепление',46,8,46,lx,96,lz,'graphite',8)}
 buildingModuleId=null;const group=parts.filter(p=>p.userData.moduleId===id);group.forEach(p=>{p.userData.moduleWidth=w;p.userData.moduleHeight=h;p.userData.moduleDepth=d});const bounds=new THREE.Box3();group.forEach(p=>bounds.expandByObject(p));const center=bounds.getCenter(new THREE.Vector3()),viewOffset=camera.position.clone().sub(controls.target).normalize().multiplyScalar(2600);controls.target.copy(center);camera.position.copy(center).add(viewOffset);controls.update();selectPart(group.find(p=>p.userData.type!=='leg'),false);$('hint').textContent='Угловой модуль 1050 мм добавлен: фальшпанели 400 и 200 мм, проём 450 мм, фасад 447 мм.'}
