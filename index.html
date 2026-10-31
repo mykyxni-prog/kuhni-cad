@@ -74,7 +74,8 @@ function addCountertopWithCutouts(){
  for(const row of rows){
   const us=row.items.map(m=>m.along),halfWidths=row.items.map(m=>m.w/2);
   const minU=Math.min(...us.map((u,i)=>u-halfWidths[i])),maxU=Math.max(...us.map((u,i)=>u+halfWidths[i]));
-  const minV=row.across-row.depth/2,maxV=row.across+row.depth/2,topY=Math.max(...row.items.map(m=>m.top));
+  const countertopDepth=600; // Стандартная глубина столешницы — 600 мм.
+  const moduleBack=row.across-row.depth/2,minV=moduleBack,maxV=moduleBack+countertopDepth,topY=Math.max(...row.items.map(m=>m.top));
   const shape=new THREE.Shape();
   shape.moveTo(minU,-minV);shape.lineTo(maxU,-minV);shape.lineTo(maxU,-maxV);shape.lineTo(minU,-maxV);shape.closePath();
   const cutouts=row.items.filter(m=>m.oven||m.sink);
@@ -87,7 +88,7 @@ function addCountertopWithCutouts(){
   // Проецируем локальные координаты ряда обратно в мировые X/Z.
   mesh.position.set(0,topY,0);
   mesh.rotation.y=-Math.atan2(row.u.z,row.u.x);
-  mesh.userData={partId:nextId++,moduleId:nextModuleId++,type:'countertop',name:'Столешница — ряд '+(made.length+1),size:{w:maxU-minU,h:38,d:row.depth},material:'stone',thickness:38,cutouts:cutouts.map(m=>({moduleId:m.id,width:m.w-40,depth:row.depth-40}))};
+  mesh.userData={partId:nextId++,moduleId:nextModuleId++,type:'countertop',name:'Столешница — ряд '+(made.length+1),size:{w:maxU-minU,h:38,d:countertopDepth},material:'stone',thickness:38,cutouts:cutouts.map(m=>({moduleId:m.id,width:m.w-40,depth:row.depth-40}))};
   model.add(mesh);parts.push(mesh);made.push(mesh);
  }
  if(!made.length){$('hint').textContent='Не удалось определить ряды нижних модулей.';return}
