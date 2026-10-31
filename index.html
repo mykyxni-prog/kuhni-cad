@@ -50,26 +50,52 @@ function addCountertopWithCutouts(){
  const old=parts.filter(p=>p.userData.type==='countertop');
  old.forEach(p=>{model.remove(p);p.geometry.dispose();const i=parts.indexOf(p);if(i>=0)parts.splice(i,1)});
  const ids=[...new Set(parts.filter(p=>p.userData.type!=='countertop'&&Number.isFinite(p.userData.moduleWidth)&&Number.isFinite(p.userData.moduleDepth)).map(p=>p.userData.moduleId))];
- const modules=ids.map(id=>{const g=parts.filter(p=>p.userData.moduleId===id),left=g.find(p=>p.userData.name==='Боковина левая'),right=g.find(p=>p.userData.name==='Боковина правая');if(!left||!right)return null;return {id,g,w:left.userData.moduleWidth,d:left.userData.moduleDepth,cx:(left.position.x+right.position.x)/2,cz:(left.position.z+right.position.z)/2,top:Math.max(...g.filter(p=>p.userData.name==='Боковина левая'||p.userData.name==='Боковина правая').map(p=>p.position.y+p.userData.size.h/2)),oven:g.some(p=>p.userData.name==='Полка под духовку'),sink:g.some(p=>p.userData.name==='Переднее вертикальное усиление')}}).filter(Boolean);
+ const modules=ids.map(id=>{
+  const g=parts.filter(p=>p.userData.moduleId===id),left=g.find(p=>p.userData.name==='Боковина левая'),right=g.find(p=>p.userData.name==='Боковина правая');
+  if(!left||!right)return null;
+  const dx=right.position.x-left.position.x,dz=right.position.z-left.position.z,len=Math.hypot(dx,dz);
+  if(len<1)return null;
+  const ux=dx/len,uz=dz/len,vx=-uz,vz=ux;
+  const cx=(left.position.x+right.position.x)/2,cz=(left.position.z+right.position.z)/2;
+  const top=Math.max(...g.filter(p=>p.userData.name==='Боковина левая'||p.userData.name==='Боковина правая').map(p=>p.position.y+p.userData.size.h/2));
+  return {id,g,w:left.userData.moduleWidth,d:left.userData.moduleDepth,cx,cz,u:{x:ux,z:uz},v:{x:vx,z:vz},along:cx*ux+cz*uz,across:cx*vx+cz*vz,top,oven:g.some(p=>p.userData.name==='Полка под духовку'),sink:g.some(p=>p.userData.name==='Переднее вертикальное усиление')};
+ }).filter(Boolean);
  const ovens=modules.filter(m=>m.oven),sinks=modules.filter(m=>m.sink);
  if(ovens.length!==1||sinks.length!==1){$('hint').textContent='Для столешницы нужен один модуль под духовку и один модуль под мойку. Сейчас найдено: духовка — '+ovens.length+', мойка — '+sinks.length+'.';return}
  if(modules.length<2){$('hint').textContent='Сначала добавь нижние модули кухни.';return}
- const minX=Math.min(...modules.map(m=>m.cx-m.w/2)),maxX=Math.max(...modules.map(m=>m.cx+m.w/2));
- const minZ=Math.min(...modules.map(m=>m.cz-m.d/2)),maxZ=Math.max(...modules.map(m=>m.cz+m.d/2));
- const depth=maxZ-minZ,topY=Math.max(...modules.map(m=>m.top));
- const holes=[ovens[0],sinks[0]].map(m=>({left:m.cx-(m.w-40)/2,right:m.cx+(m.w-40)/2,front:m.cz-(depth-40)/2,back:m.cz+(depth-40)/2,width:m.w-40}));
- if(holes.some(h=>h.width<100||h.width>mWidthLimit(maxX-minX))){$('hint').textContent='Ширина одного из вырезов не помещается в столешницу. Проверь размеры модулей.';return}
- const shape=new THREE.Shape();
- shape.moveTo(minX,-minZ);shape.lineTo(maxX,-minZ);shape.lineTo(maxX,-maxZ);shape.lineTo(minX,-maxZ);shape.closePath();
- holes.forEach(h=>{const path=new THREE.Path();path.moveTo(h.left,-h.front);path.lineTo(h.left,-h.back);path.lineTo(h.right,-h.back);path.lineTo(h.right,-h.front);path.closePath();shape.holes.push(path)});
- const geo=new THREE.ExtrudeGeometry(shape,{depth:38,bevelEnabled:false,curveSegments:1});
- geo.rotateX(-Math.PI/2);
- const mesh=new THREE.Mesh(geo,makeMaterial('stone'));
- mesh.position.set(0,topY,0);
- const id=nextModuleId++;
- mesh.userData={partId:nextId++,moduleId:id,type:'countertop',name:'Общая столешница 38 мм с вырезами',size:{w:maxX-minX,h:38,d:depth},material:'stone',thickness:38,cutouts:holes.map(h=>({width:h.width,depth:depth-40}))};
- model.add(mesh);parts.push(mesh);selectPart(mesh,true);refreshList();
- $('hint').textContent='Столешница 38 мм установлена. Два сквозных выреза: '+Math.round(holes[0].width)+' × '+Math.round(depth-40)+' мм и '+Math.round(holes[1].width)+' × '+Math.round(depth-40)+' мм.';
+ // Объединяем только модули, стоящие в одной линии и ориентированные в одну сторону.
+ const rows=[];
+ modules.forEach(m=>{
+  let row=rows.find(r=>Math.abs(Math.abs(r.u.x*m.u.x+r.u.z*m.u.z)-1)<0.015&&Math.abs(r.across-m.across)<Math.max(40,Math.min(r.depth,m.d)*0.12));
+  if(!row){row={u:{...m.u},v:{...m.v},across:m.across,depth:m.d,items:[]};rows.push(row)}
+  row.items.push(m);row.depth=Math.max(row.depth,m.d);
+ });
+ const made=[];
+ for(const row of rows){
+  const us=row.items.map(m=>m.along),halfWidths=row.items.map(m=>m.w/2);
+  const minU=Math.min(...us.map((u,i)=>u-halfWidths[i])),maxU=Math.max(...us.map((u,i)=>u+halfWidths[i]));
+  const minV=row.across-row.depth/2,maxV=row.across+row.depth/2,topY=Math.max(...row.items.map(m=>m.top));
+  const shape=new THREE.Shape();
+  shape.moveTo(minU,-minV);shape.lineTo(maxU,-minV);shape.lineTo(maxU,-maxV);shape.lineTo(minU,-maxV);shape.closePath();
+  const cutouts=row.items.filter(m=>m.oven||m.sink);
+  cutouts.forEach(m=>{
+   const width=Math.max(100,m.w-40),left=m.along-width/2,right=m.along+width/2,front=m.across-(row.depth-40)/2,back=m.across+(row.depth-40)/2;
+   const path=new THREE.Path();path.moveTo(left,-front);path.lineTo(left,-back);path.lineTo(right,-back);path.lineTo(right,-front);path.closePath();shape.holes.push(path);
+  });
+  const geo=new THREE.ExtrudeGeometry(shape,{depth:38,bevelEnabled:false,curveSegments:1});geo.rotateX(-Math.PI/2);
+  const mesh=new THREE.Mesh(geo,makeMaterial('stone'));
+  // Проецируем локальные координаты ряда обратно в мировые X/Z.
+  mesh.position.set(row.u.x*0+row.v.x*0,topY,row.u.z*0+row.v.z*0);
+  mesh.rotation.y=Math.atan2(row.u.z,row.u.x);
+  // Геометрия построена в координатах вдоль/поперёк ряда, поэтому сдвигаем её начало к мировому нулю ряда.
+  mesh.position.x=row.u.x*minU+row.v.x*minV;
+  mesh.position.z=row.u.z*minU+row.v.z*minV;
+  mesh.userData={partId:nextId++,moduleId:nextModuleId++,type:'countertop',name:'Столешница — ряд '+(made.length+1),size:{w:maxU-minU,h:38,d:row.depth},material:'stone',thickness:38,cutouts:cutouts.map(m=>({moduleId:m.id,width:m.w-40,depth:row.depth-40}))};
+  model.add(mesh);parts.push(mesh);made.push(mesh);
+ }
+ if(!made.length){$('hint').textContent='Не удалось определить ряды нижних модулей.';return}
+ selectPart(made[0],true);refreshList();
+ $('hint').textContent='Столешница установлена отдельными участками по рядам модулей: '+made.length+'. Пустое пространство внутри угла не заполняется.';
 }
 function mWidthLimit(width){return width-1}
 function addCornerStraight(){const w=1050,h=720,d=520,t=16,legsH=100,bottomY=legsH,sideH=h-t,sideY=bottomY+t+sideH/2,topY=bottomY+h,frontZ=d/2+8;buildingModuleId=nextModuleId++;const id=buildingModuleId,x=0,z=0,innerW=w-2*t,nextX=getNextModuleX(w);
