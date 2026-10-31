@@ -60,9 +60,7 @@ function addCountertopWithCutouts(){
   const top=Math.max(...g.filter(p=>p.userData.name==='Боковина левая'||p.userData.name==='Боковина правая').map(p=>p.position.y+p.userData.size.h/2));
   return {id,g,w:left.userData.moduleWidth,d:left.userData.moduleDepth,cx,cz,u:{x:ux,z:uz},v:{x:vx,z:vz},along:cx*ux+cz*uz,across:cx*vx+cz*vz,top,oven:g.some(p=>p.userData.name==='Полка под духовку'),sink:g.some(p=>p.userData.name==='Переднее вертикальное усиление')};
  }).filter(Boolean);
- const ovens=modules.filter(m=>m.oven),sinks=modules.filter(m=>m.sink);
- if(ovens.length!==1||sinks.length!==1){$('hint').textContent='Для столешницы нужен один модуль под духовку и один модуль под мойку. Сейчас найдено: духовка — '+ovens.length+', мойка — '+sinks.length+'.';return}
- if(modules.length<2){$('hint').textContent='Сначала добавь нижние модули кухни.';return}
+ if(!modules.length){$('hint').textContent='Сначала добавь нижние модули кухни.';return}
  // Объединяем только модули, стоящие в одной линии и ориентированные в одну сторону.
  const rows=[];
  modules.forEach(m=>{
