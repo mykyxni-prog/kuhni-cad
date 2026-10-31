@@ -85,11 +85,8 @@ function addCountertopWithCutouts(){
   const geo=new THREE.ExtrudeGeometry(shape,{depth:38,bevelEnabled:false,curveSegments:1});geo.rotateX(-Math.PI/2);
   const mesh=new THREE.Mesh(geo,makeMaterial('stone'));
   // Проецируем локальные координаты ряда обратно в мировые X/Z.
-  mesh.position.set(row.u.x*0+row.v.x*0,topY,row.u.z*0+row.v.z*0);
-  mesh.rotation.y=Math.atan2(row.u.z,row.u.x);
-  // Геометрия построена в координатах вдоль/поперёк ряда, поэтому сдвигаем её начало к мировому нулю ряда.
-  mesh.position.x=row.u.x*minU+row.v.x*minV;
-  mesh.position.z=row.u.z*minU+row.v.z*minV;
+  mesh.position.set(0,topY,0);
+  mesh.rotation.y=-Math.atan2(row.u.z,row.u.x);
   mesh.userData={partId:nextId++,moduleId:nextModuleId++,type:'countertop',name:'Столешница — ряд '+(made.length+1),size:{w:maxU-minU,h:38,d:row.depth},material:'stone',thickness:38,cutouts:cutouts.map(m=>({moduleId:m.id,width:m.w-40,depth:row.depth-40}))};
   model.add(mesh);parts.push(mesh);made.push(mesh);
  }
