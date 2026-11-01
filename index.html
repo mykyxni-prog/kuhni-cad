@@ -118,7 +118,10 @@ function addCabinetHinges(moduleId,w,h,d,bottomY){
  const right=parts.find(p=>p.userData.moduleId===moduleId&&p.userData.name==='Боковина правая');
  if(!left||!right)return;
  const ys=[bottomY+110,bottomY+h-110];
- for(const side of [{panel:left,x:left.position.x+8,label:'левая',arm:17},{panel:right,x:right.position.x-8,label:'правая',arm:-17}]){
+ const sides=w>600?
+  [{panel:left,x:left.position.x+8,label:'левая',arm:17},{panel:right,x:right.position.x-8,label:'правая',arm:-17}]:
+  [{panel:left,x:left.position.x+8,label:'левая',arm:17}];
+ for(const side of sides){
   for(let i=0;i<ys.length;i++){
    const y=ys[i],z=d/2-65;
    addPart('hinge','Петля '+side.label+' '+(i+1),34,70,5,side.x,y,z,'graphite',5);
