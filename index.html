@@ -47,6 +47,16 @@ function addByType(type){if(type==='facade'){if(selected&&!individualMode){const
 function addRoundPart(name,diameter,height,x,y,z,material='graphite'){const geo=new THREE.CylinderGeometry(diameter/2,diameter/2,height,24);const mesh=new THREE.Mesh(geo,makeMaterial(material));mesh.position.set(x,y,z);const moduleId=buildingModuleId??nextModuleId++;mesh.userData={partId:nextId++,moduleId,type:'leg',shape:'cylinder',name,size:{w:diameter,h:height,d:diameter},material,thickness:diameter};model.add(mesh);parts.push(mesh);return mesh}
 function getNextModuleX(width){let maxX=-Infinity;const ids=new Set(parts.filter(p=>p.userData.type!=='countertop').map(p=>p.userData.moduleId).filter(v=>v!=null));for(const id of ids){const group=parts.filter(p=>p.userData.moduleId===id);const b=new THREE.Box3();group.forEach(p=>b.expandByObject(p));if(!b.isEmpty())maxX=Math.max(maxX,b.max.x)}return Number.isFinite(maxX)?maxX+width/2:roomLeft+width/2}
 function addCountertopWithCutouts(){
+ // При первом создании столешницы отодвигаем каждый нижний модуль от стены на 40 мм.
+ const moduleIds=[...new Set(parts.filter(p=>p.userData.type!=='countertop'&&Number.isFinite(p.userData.moduleWidth)&&Number.isFinite(p.userData.moduleDepth)).map(p=>p.userData.moduleId))];
+ moduleIds.forEach(id=>{
+  const group=parts.filter(p=>p.userData.moduleId===id&&p.userData.type!=='countertop');
+  if(!group.length||group.some(p=>p.userData.countertopWallOffsetApplied))return;
+  const side=group.find(p=>p.userData.name==='Боковина левая')||group[0];
+  const away=new THREE.Vector3(0,0,1).applyQuaternion(side.getWorldQuaternion(new THREE.Quaternion())).setY(0).normalize();
+  if(away.lengthSq()<0.5)return;
+  group.forEach(p=>{p.position.addScaledVector(away,40);p.userData.countertopWallOffsetApplied=true;p.updateMatrixWorld(true)});
+ });
  const old=parts.filter(p=>p.userData.type==='countertop');
  old.forEach(p=>{model.remove(p);p.geometry.dispose();const i=parts.indexOf(p);if(i>=0)parts.splice(i,1)});
  const ids=[...new Set(parts.filter(p=>p.userData.type!=='countertop'&&Number.isFinite(p.userData.moduleWidth)&&Number.isFinite(p.userData.moduleDepth)).map(p=>p.userData.moduleId))];
