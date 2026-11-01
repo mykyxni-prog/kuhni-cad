@@ -56,6 +56,10 @@ function addCountertopWithCutouts(){
   const dx=right.position.x-left.position.x,dz=right.position.z-left.position.z,len=Math.hypot(dx,dz);
   if(len<1)return null;
   const ux=dx/len,uz=dz/len,vx=-uz,vz=ux;
+  // Отодвигаем весь модуль от стены один раз; столешница затем перекроет зазор до стены.
+  if(!g.some(p=>p.userData.countertopWallShiftApplied)){
+   g.forEach(p=>{p.position.x+=vx*40;p.position.z+=vz*40;p.userData.countertopWallShiftApplied=true});
+  }
   const cx=(left.position.x+right.position.x)/2,cz=(left.position.z+right.position.z)/2;
   const top=Math.max(...g.filter(p=>p.userData.name==='Боковина левая'||p.userData.name==='Боковина правая').map(p=>p.position.y+p.userData.size.h/2));
   return {id,g,w:left.userData.moduleWidth,d:left.userData.moduleDepth,cx,cz,u:{x:ux,z:uz},v:{x:vx,z:vz},along:cx*ux+cz*uz,across:cx*vx+cz*vz,top,oven:g.some(p=>p.userData.name==='Полка под духовку'),sink:g.some(p=>p.userData.name==='Переднее вертикальное усиление')};
@@ -73,7 +77,7 @@ function addCountertopWithCutouts(){
   const us=row.items.map(m=>m.along),halfWidths=row.items.map(m=>m.w/2);
   const minU=Math.min(...us.map((u,i)=>u-halfWidths[i])),maxU=Math.max(...us.map((u,i)=>u+halfWidths[i]));
   const countertopDepth=600; // Стандартная глубина столешницы — 600 мм.
-  const moduleBack=row.across-row.depth/2,minV=moduleBack,maxV=moduleBack+countertopDepth,topY=Math.max(...row.items.map(m=>m.top));
+  const moduleBack=row.across-row.depth/2,minV=moduleBack-40,maxV=minV+countertopDepth,topY=Math.max(...row.items.map(m=>m.top));
   const shape=new THREE.Shape();
   shape.moveTo(minU,-minV);shape.lineTo(maxU,-minV);shape.lineTo(maxU,-maxV);shape.lineTo(minU,-maxV);shape.closePath();
   const cutouts=row.items.filter(m=>m.oven||m.sink);
@@ -84,7 +88,7 @@ function addCountertopWithCutouts(){
   const geo=new THREE.ExtrudeGeometry(shape,{depth:38,bevelEnabled:false,curveSegments:1});geo.rotateX(-Math.PI/2);
   const mesh=new THREE.Mesh(geo,makeMaterial('stone'));
   // Проецируем локальные координаты ряда обратно в мировые X/Z.
-  mesh.position.set(row.v.x*40,topY,row.v.z*40); // Столешница отступает от стены на 40 мм; модули остаются на месте.
+  mesh.position.set(0,topY,0); // Столешница доходит до стены; модули отодвинуты на 40 мм.
   mesh.rotation.y=-Math.atan2(row.u.z,row.u.x);
   mesh.userData={partId:nextId++,moduleId:nextModuleId++,type:'countertop',name:'Столешница — ряд '+(made.length+1),size:{w:maxU-minU,h:38,d:countertopDepth},material:'stone',thickness:38,cutouts:cutouts.map(m=>({moduleId:m.id,width:m.w-40,depth:row.depth-40}))};
   model.add(mesh);parts.push(mesh);made.push(mesh);
