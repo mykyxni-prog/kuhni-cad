@@ -65,11 +65,21 @@ function addCountertopWithCutouts(){
   return {id,g,w:left.userData.moduleWidth,d:left.userData.moduleDepth,cx,cz,u:{x:ux,z:uz},v:{x:vx,z:vz},along:cx*ux+cz*uz,across:cx*vx+cz*vz,top,oven:g.some(p=>p.userData.name==='Полка под духовку'),sink:g.some(p=>p.userData.name==='Переднее вертикальное усиление')};
  }).filter(Boolean);
  if(!modules.length){$('hint').textContent='Сначала добавь нижние модули кухни.';return}
- // Объединяем только модули, стоящие в одной линии и ориентированные в одну сторону.
+ // Объединяем модули в ряд в единой системе координат, даже если оси шкафов направлены противоположно.
  const rows=[];
  modules.forEach(m=>{
-  let row=rows.find(r=>Math.abs(Math.abs(r.u.x*m.u.x+r.u.z*m.u.z)-1)<0.015&&Math.abs(r.across-m.across)<Math.max(40,Math.min(r.depth,m.d)*0.12));
-  if(!row){row={u:{...m.u},v:{...m.v},across:m.across,depth:m.d,items:[]};rows.push(row)}
+  let row=rows.find(r=>{
+   const parallel=Math.abs(r.u.x*m.u.x+r.u.z*m.u.z);
+   const across=m.cx*r.v.x+m.cz*r.v.z;
+   return Math.abs(parallel-1)<0.015&&Math.abs(r.across-across)<Math.max(40,Math.min(r.depth,m.d)*0.12);
+  });
+  if(!row){
+   const u={...m.u},v={x:-u.z,z:u.x};
+   row={u,v,across:m.cx*v.x+m.cz*v.z,depth:m.d,items:[]};
+   rows.push(row);
+  }
+  m.along=m.cx*row.u.x+m.cz*row.u.z;
+  m.across=m.cx*row.v.x+m.cz*row.v.z;
   row.items.push(m);row.depth=Math.max(row.depth,m.d);
  });
  const made=[];
@@ -86,9 +96,14 @@ function addCountertopWithCutouts(){
    const path=new THREE.Path();path.moveTo(left,-front);path.lineTo(left,-back);path.lineTo(right,-back);path.lineTo(right,-front);path.closePath();shape.holes.push(path);
   });
   const geo=new THREE.ExtrudeGeometry(shape,{depth:38,bevelEnabled:false,curveSegments:1});geo.rotateX(-Math.PI/2);
-  const mesh=new THREE.Mesh(geo,makeMaterial('stone'));
-  // Проецируем локальные координаты ряда обратно в мировые X/Z.
-  mesh.position.set(0,topY,0); // Столешница доходит до стены; модули отодвинуты на 40 мм.
+  const stoneMat=makeMaterial('stone');
+  const mesh=new THREE.Mesh(geo,stoneMat);
+  // Классический постформинг: скруглённый передний край по всей длине столешницы.
+  const frontRoll=new THREE.Mesh(new THREE.CylinderGeometry(19,19,maxU-minU,32,1,false),stoneMat);
+  frontRoll.geometry.rotateZ(Math.PI/2);
+  frontRoll.position.set((minU+maxU)/2,19,maxV);
+  mesh.add(frontRoll);
+  mesh.position.set(0,topY,0);
   mesh.rotation.y=-Math.atan2(row.u.z,row.u.x);
   mesh.userData={partId:nextId++,moduleId:nextModuleId++,type:'countertop',name:'Столешница — ряд '+(made.length+1),size:{w:maxU-minU,h:38,d:countertopDepth},material:'stone',thickness:38,cutouts:cutouts.map(m=>({moduleId:m.id,width:m.w-40,depth:row.depth-40}))};
   model.add(mesh);parts.push(mesh);made.push(mesh);
