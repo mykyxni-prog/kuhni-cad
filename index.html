@@ -132,21 +132,19 @@ buildingModuleId=null;const group=parts.filter(p=>p.userData.moduleId===id);grou
 function addCornerMirror(){addCornerStraight();const id=selectedModuleId,group=parts.filter(p=>p.userData.moduleId===id);if(!group.length)return;const box=new THREE.Box3();group.forEach(p=>box.expandByObject(p));const center=box.getCenter(new THREE.Vector3());group.forEach(p=>{p.position.x=2*center.x-p.position.x;p.rotation.y=-p.rotation.y;p.updateMatrixWorld(true)});model.updateMatrixWorld(true);selectPart(group.find(p=>p.userData.type!=='leg')||group[0],false);refreshList();$('hint').textContent='Зеркальный угловой модуль 1050 мм добавлен.'}
 
 function addFirmaxHinge(moduleId,sideX,frontZ,y,sideSign){
- const nickel=new THREE.MeshStandardMaterial({color:0xc4c9ce,metalness:.88,roughness:.24});
- const dark=new THREE.MeshStandardMaterial({color:0x8d949b,metalness:.82,roughness:.3});
- function part(name,geo,x,yy,z,mat=nickel,ry=0){
-  const m=new THREE.Mesh(geo,mat);m.position.set(x,yy,z);m.rotation.y=ry;
-  m.userData={partId:nextId++,moduleId,type:'hinge',name,size:{w:35,h:35,d:35},material:'nickel',thickness:2};
-  model.add(m);parts.push(m);return m;
- }
- part('Firmax FRM8100 — монтажная планка',new THREE.BoxGeometry(6,48,18),sideX+sideSign*2,y,frontZ-33,dark);
- part('Firmax FRM8100 — чашка Ø35',new THREE.CylinderGeometry(17.5,17.5,11.5,40),sideX+sideSign*34,y,frontZ-5,nickel,Math.PI/2);
- part('Firmax — крышка чашки',new THREE.CylinderGeometry(14.5,14.5,1.2,40),sideX+sideSign*34,y,frontZ+1,nickel,Math.PI/2);
- const armX=sideX+sideSign*18,armZ=frontZ-24;
- part('Firmax — плечо шарнира',new THREE.BoxGeometry(26,8,9),armX+sideSign*2,y,armZ,dark,sideSign*.16);
- part('Firmax — колено шарнира',new THREE.BoxGeometry(20,7,8),armX+sideSign*15,y+4,armZ+10,nickel,-sideSign*.24);
- [[armX+sideSign*3,y,armZ-4],[armX+sideSign*18,y+4,armZ+7]].forEach(p=>part('Firmax — шарнирный палец',new THREE.CylinderGeometry(3,3,10,20),p[0],p[1],p[2],dark,Math.PI/2));
- [-16,16].forEach(dy=>part('Firmax — винт монтажной планки',new THREE.CylinderGeometry(2.2,2.2,2,16),sideX+sideSign*2,y+dy,frontZ-23,dark,Math.PI/2));
+ const assembly=new THREE.Group();assembly.position.set(sideX,y,frontZ);
+ assembly.userData={partId:nextId++,moduleId,type:'hinge',name:'Шарнирная механика петли',size:{w:70,h:48,d:38},material:'nickel',hingeAssembly:true};
+ const nickel=new THREE.MeshStandardMaterial({color:0xc4c9ce,metalness:.82,roughness:.28}),dark=new THREE.MeshStandardMaterial({color:0x737b83,metalness:.78,roughness:.32});
+ const fixed=new THREE.Group();assembly.add(fixed);
+ const plate=new THREE.Mesh(new THREE.BoxGeometry(7,42,18),dark);plate.position.set(-sideSign*7,0,-17);fixed.add(plate);
+ [-13,13].forEach(dy=>{const screw=new THREE.Mesh(new THREE.CylinderGeometry(2,2,2,16),nickel);screw.rotation.x=Math.PI/2;screw.position.set(-sideSign*7,dy,-7);fixed.add(screw)});
+ const moving=new THREE.Group();assembly.add(moving);
+ const cup=new THREE.Mesh(new THREE.CylinderGeometry(17.5,17.5,9,36),nickel);cup.rotation.x=Math.PI/2;cup.position.set(sideSign*27,0,-2);moving.add(cup);
+ const cap=new THREE.Mesh(new THREE.CylinderGeometry(13,13,1.5,36),dark);cap.rotation.x=Math.PI/2;cap.position.set(sideSign*27,0,3);moving.add(cap);
+ const arm1=new THREE.Mesh(new THREE.BoxGeometry(28,7,8),nickel);arm1.position.set(sideSign*10,0,-12);arm1.rotation.y=sideSign*.22;moving.add(arm1);
+ const arm2=new THREE.Mesh(new THREE.BoxGeometry(20,6,7),dark);arm2.position.set(sideSign*20,3,-4);arm2.rotation.y=-sideSign*.3;moving.add(arm2);
+ [[sideSign*5,0,-12],[sideSign*19,3,-4]].forEach(v=>{const pin=new THREE.Mesh(new THREE.CylinderGeometry(3,3,9,16),dark);pin.position.set(v[0],v[1],v[2]);pin.rotation.z=Math.PI/2;moving.add(pin)});
+ assembly.userData.movingLink=moving;model.add(assembly);parts.push(assembly);return assembly;
 }
 function addCabinetHinges(moduleId,w,h,d,bottomY){
  const left=parts.find(p=>p.userData.moduleId===moduleId&&p.userData.name==='Боковина левая');
@@ -168,12 +166,14 @@ function toggleSelectedFacade(){
   mesh.position.x+=side*w/2;
  }
  const pivot=p.hingePivot,opening=!p.isOpen,start=mesh.rotation.y,target=pivot.closedRotation[1]+(opening?pivot.side*Math.PI/2:0),duration=420,started=performance.now();
+ const linkedHinges=parts.filter(q=>q.userData.moduleId===p.moduleId&&q.userData.hingeAssembly),hingeStarts=linkedHinges.map(q=>q.rotation.y);
  mesh.userData.animating=true;
  function frame(now){
   const t=Math.min(1,(now-started)/duration),ease=1-Math.pow(1-t,3);
   mesh.rotation.y=start+(target-start)*ease;
+  linkedHinges.forEach((hinge,i)=>{hinge.rotation.y=hingeStarts[i]+(target-start)*ease});
   if(t<1){requestAnimationFrame(frame);return}
-  mesh.rotation.y=target;p.isOpen=opening;mesh.userData.animating=false;
+  mesh.rotation.y=target;linkedHinges.forEach((hinge,i)=>{hinge.rotation.y=hingeStarts[i]+(target-start)});p.isOpen=opening;mesh.userData.animating=false;
   $('hint').textContent=opening?'Фасад открыт на 90° — можно закрыть кнопкой.':'Фасад закрыт.';
   updateHandles();refreshList();
  }
