@@ -136,8 +136,11 @@ function addFirmaxHinge(moduleId,sideX,frontZ,y,sideSign){
  assembly.userData={partId:nextId++,moduleId,type:'hinge',name:'Шарнирная механика петли',size:{w:70,h:48,d:38},material:'nickel',hingeAssembly:true};
  const nickel=new THREE.MeshStandardMaterial({color:0xc4c9ce,metalness:.82,roughness:.28}),dark=new THREE.MeshStandardMaterial({color:0x737b83,metalness:.78,roughness:.32});
  const fixed=new THREE.Group();assembly.add(fixed);
- const plate=new THREE.Mesh(new THREE.BoxGeometry(7,42,18),dark);plate.position.set(-sideSign*7,0,-17);fixed.add(plate);
- [-13,13].forEach(dy=>{const screw=new THREE.Mesh(new THREE.CylinderGeometry(2,2,2,16),nickel);screw.rotation.x=Math.PI/2;screw.position.set(-sideSign*7,dy,-7);fixed.add(screw)});
+ // Visible mounting plate fixed to the cabinet side wall, with two screw heads
+ const plate=new THREE.Mesh(new THREE.BoxGeometry(5,42,34),dark);plate.position.set(sideSign*3,0,-19);fixed.add(plate);
+ [-14,14].forEach(dy=>{const screw=new THREE.Mesh(new THREE.CylinderGeometry(2.5,2.5,2,16),nickel);screw.rotation.z=Math.PI/2;screw.position.set(sideSign*6,dy,-19);fixed.add(screw)});
+ // Small raised seat makes the cabinet-side attachment visually distinct
+ const seat=new THREE.Mesh(new THREE.BoxGeometry(8,13,13),nickel);seat.position.set(sideSign*8,0,-5);fixed.add(seat);
  const moving=new THREE.Group();assembly.add(moving);
  const cup=new THREE.Mesh(new THREE.CylinderGeometry(17.5,17.5,9,36),nickel);cup.rotation.x=Math.PI/2;cup.position.set(sideSign*27,0,-2);moving.add(cup);
  const cap=new THREE.Mesh(new THREE.CylinderGeometry(13,13,1.5,36),dark);cap.rotation.x=Math.PI/2;cap.position.set(sideSign*27,0,3);moving.add(cap);
