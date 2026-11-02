@@ -160,31 +160,57 @@ function addCabinetHinges(moduleId,w,h,d,bottomY){
 function addCabinet(w=800,h=720,d=520,doors=false,withLegs=false,withShelf=true,kind='standard'){const t=16,legsH=withLegs?100:0,sideH=h-t,nextX=getNextModuleX(w);buildingModuleId=nextModuleId++;const x=0,z=0,bottomY=legsH,sideY=bottomY+t+sideH/2,topY=bottomY+h,innerW=w-2*t;addPart('panel','Боковина левая',t,sideH,d,x-w/2+t/2,sideY,z,'oak',t);addPart('panel','Боковина правая',t,sideH,d,x+w/2-t/2,sideY,z,'oak',t);addPart('panel','Дно накладное',w,t,d,x,bottomY+t/2,z,'oak',t);if(withShelf)addPart('shelf','Полка',innerW,t,d-5,x,bottomY+t+sideH/2,z,'oak',t);if(kind==='oven'){const drawerFrontH=h-600-3,dividerTopY=topY-600;addPart('shelf','Полка под духовку',innerW,t,d,x,dividerTopY-t/2,z,'oak',t);addPart('panel','Фасад ящика',w-3,drawerFrontH,16,x,bottomY+drawerFrontH/2,d/2+8,'milk',16);const boxW=innerW-24,boxD=Math.min(450,d-70),boxH=70,boxZ=d/2-16-boxD/2,boxY=bottomY+16+boxH/2;addPart('panel','Боковина ящика левая',12,boxH,boxD,x-boxW/2+6,boxY,boxZ,'oak',12);addPart('panel','Боковина ящика правая',12,boxH,boxD,x+boxW/2-6,boxY,boxZ,'oak',12);addPart('panel','Задняя стенка ящика',boxW-24,boxH,12,x,boxY,boxZ-boxD/2+6,'oak',12);addPart('panel','Дно ящика',boxW-24,12,boxD,x,bottomY+16+6,boxZ,'oak',12)}else if(kind==='sink'){const railHeight=80;addPart('panel','Переднее вертикальное усиление',innerW,railHeight,t,x,topY-railHeight/2,d/2-t/2,'oak',t)}else{const railH=t,railD=100;addPart('panel','Верхнее усиление переднее',innerW,railH,railD,x,topY-railH/2,d/2-railD/2,'oak',t);addPart('panel','Верхнее усиление заднее',innerW,railH,railD,x,topY-railH/2,-d/2+railD/2,'oak',t);addPart('back','Задняя стенка',w-3,h-3,4,x,bottomY+(h-3)/2,-d/2+2,'milk',4)}if(withLegs){for(const lx of [-w/2+55,w/2-55])for(const lz of [-d/2+55,d/2-55]){addRoundPart('Опора Volpato 31 — основание',48,10,lx,5,lz,'graphite');addRoundPart('Опора Volpato 31 — стойка',28,82,lx,51,lz,'graphite');addPart('leg','Опора Volpato 31 — верхнее крепление',46,8,46,lx,96,lz,'graphite',8)}}const id=buildingModuleId;buildingModuleId=null;const last=parts.filter(p=>p.userData.moduleId===id);if(last.length){const wallOffset=-3500+d/2+10;last.forEach(p=>{p.position.x+=nextX;p.position.z+=wallOffset;p.updateMatrixWorld(true)});const bounds=new THREE.Box3();last.forEach(p=>bounds.expandByObject(p));last.forEach(p=>{p.userData.moduleWidth=w;p.userData.moduleHeight=h;p.userData.moduleDepth=d});addCabinetHinges(id,w,h,d,bottomY);if(doors)syncModuleFacades(id);const center=bounds.getCenter(new THREE.Vector3());const viewOffset=camera.position.clone().sub(controls.target).normalize().multiplyScalar(2600);controls.target.copy(center);camera.position.copy(center).add(viewOffset);controls.update();selectPart(last[0],false)}}
 function toggleSelectedFacade(){
  if(!selected||selected.userData.type!=='facade'){ $('hint').textContent='Выбери фасад отдельным щелчком с Shift.'; return; }
- const p=selected.userData,moduleId=p.moduleId;
- const doors=parts.filter(q=>q.userData.moduleId===moduleId&&q.userData.type==='facade');
+ const moduleId=selected.userData.moduleId;
+ const doors=parts.filter(q=>q.userData.moduleId===moduleId&&q.userData.type==='facade').sort((a,b)=>a.position.x-b.position.x);
  if(doors.some(q=>q.userData.animating))return;
- const opening=!p.isOpen,duration=420,started=performance.now();
- doors.forEach(mesh=>{
+ const opening=(doors[0].userData.openProgress??(doors[0].userData.isOpen?1:0))<0.5;
+ const duration=500,started=performance.now();
+ doors.forEach((mesh,index)=>{
   const u=mesh.userData;
   if(!u.hingePivot){
-   const center=doors.reduce((sum,q)=>sum+q.position.x,0)/doors.length;
-   const side=mesh.position.x<center?-1:1,w=u.size.w;
-   u.hingePivot={side,closedPosition:mesh.position.toArray(),closedRotation:mesh.rotation.toArray()};
+   const side=doors.length===1?-1:(index===0?-1:1),w=u.size.w;
+   u.hingePivot={side,closedRotation:mesh.rotation.toArray()};
    mesh.geometry.translate(-side*w/2,0,0);
    mesh.position.x+=side*w/2;
   }
   u.animating=true;
  });
- const doorStates=doors.map(mesh=>({mesh,p:mesh.userData.hingePivot,start:mesh.rotation.y,target:mesh.userData.hingePivot.closedRotation[1]+(opening?mesh.userData.hingePivot.side*Math.PI/2:0)}));
- const hingeGroups=parts.filter(q=>q.userData.moduleId===moduleId&&q.userData.hingeAssembly);
- const links=hingeGroups.map(q=>({link:q.userData.movingLink,side:q.userData.sideSign||1,start:q.userData.movingLink?.rotation.y||0}));
+ const doorStates=doors.map(mesh=>({
+  mesh,
+  from:mesh.userData.openProgress??(mesh.userData.isOpen?1:0),
+  to:opening?1:0,
+  side:mesh.userData.hingePivot.side
+ }));
+ const hinges=parts.filter(q=>q.userData.moduleId===moduleId&&q.userData.hingeAssembly);
+ const hingeStates=hinges.map(h=>({
+  link:h.userData.movingLink,
+  sideSign:h.userData.sideSign||1,
+  from:h.userData.hingeProgress??0,
+  to:opening?1:0
+ }));
  function frame(now){
-  const t=Math.min(1,(now-started)/duration),ease=1-Math.pow(1-t,3);
-  doorStates.forEach(d=>{d.mesh.rotation.y=d.start+(d.target-d.start)*ease});
-  links.forEach(h=>{if(h.link)h.link.rotation.y=h.start+(opening? h.side*Math.PI/2:0)*ease});
+  const t=Math.min(1,(now-started)/duration),ease=t*t*(3-2*t);
+  doorStates.forEach(d=>{
+   const progress=d.from+(d.to-d.from)*ease;
+   d.mesh.rotation.y=d.mesh.userData.hingePivot.closedRotation[1]+d.side*Math.PI/2*progress;
+   d.mesh.userData.openProgress=progress;
+  });
+  hingeStates.forEach(h=>{
+   const progress=h.from+(h.to-h.from)*ease;
+   if(h.link)h.link.rotation.y=-h.sideSign*Math.PI/2*progress;
+   const assembly=hinges.find(q=>q.userData.movingLink===h.link);
+   if(assembly)assembly.userData.hingeProgress=progress;
+  });
   if(t<1){requestAnimationFrame(frame);return}
-  doorStates.forEach(d=>{d.mesh.rotation.y=d.target;d.mesh.userData.isOpen=opening;d.mesh.userData.animating=false});
-  links.forEach(h=>{if(h.link)h.link.rotation.y=h.start+(opening?h.side*Math.PI/2:0)});
+  doorStates.forEach(d=>{
+   d.mesh.rotation.y=d.mesh.userData.hingePivot.closedRotation[1]+d.side*Math.PI/2*d.to;
+   d.mesh.userData.openProgress=d.to;
+   d.mesh.userData.isOpen=d.to===1;
+   d.mesh.userData.animating=false;
+  });
+  hingeStates.forEach(h=>{
+   if(h.link)h.link.rotation.y=-h.sideSign*Math.PI/2*h.to;
+  });
   $('hint').textContent=opening?'Обе створки открыты — можно закрыть кнопкой.':'Обе створки закрыты.';
   updateHandles();refreshList();
  }
