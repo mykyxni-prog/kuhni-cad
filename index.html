@@ -33,7 +33,7 @@
 <script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}</script>
 <script type="module">
 import * as THREE from 'three';
-import { buildDrawerModule, toggleDrawer } from './drawers.js';
+import { buildDrawerModule, toggleDrawer } from './drawers.js?v=4drawers1';
 import {OrbitControls} from 'https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js';
 const $=id=>document.getElementById(id),stage=$('stage'),scene=new THREE.Scene();scene.background=new THREE.Color('#d8d3c9');
 const camera=new THREE.PerspectiveCamera(42,1,1,50000),renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.1;stage.appendChild(renderer.domElement);
@@ -223,10 +223,17 @@ function addDrawerCabinet(variant){
  captureUndoSnapshot();
  const w=800,h=720,d=520,legsH=100,nextX=getNextModuleX(w);
  buildingModuleId=nextModuleId++;
+ const id=buildingModuleId;
  let built;
- try{built=buildDrawerModule({THREE,addPart,addRoundPart,parts,width:w,height:h,depth:d,legsHeight:legsH,variant})}
- finally{buildingModuleId=null}
- const id=built.moduleId,group=parts.filter(p=>p.userData.moduleId===id),wallOffset=-3500+d/2+10;
+ try{
+  built=buildDrawerModule({THREE,addPart,addRoundPart,parts,width:w,height:h,depth:d,legsHeight:legsH,variant});
+ }catch(error){
+  const partial=parts.filter(p=>p.userData.moduleId===id);
+  partial.forEach(p=>{model.remove(p);p.geometry?.dispose();const index=parts.indexOf(p);if(index>=0)parts.splice(index,1)});
+  $('hint').textContent='Не удалось построить модуль ящиков: '+(error?.message||error);
+  refreshList();buildingModuleId=null;return;
+ }finally{buildingModuleId=null}
+ const group=parts.filter(p=>p.userData.moduleId===id),wallOffset=-3500+d/2+10;
  group.forEach(p=>{p.position.x+=nextX;p.position.z+=wallOffset;p.userData.moduleWidth=w;p.userData.moduleHeight=h;p.userData.moduleDepth=d;p.userData.drawerModule=true;p.userData.drawerVariant=variant;p.updateMatrixWorld(true)});
  group.filter(p=>p.userData.drawerId).forEach(p=>{p.userData.drawerDepth=built.dimensions.drawerDepth});
  const bounds=new THREE.Box3();group.forEach(p=>bounds.expandByObject(p));
