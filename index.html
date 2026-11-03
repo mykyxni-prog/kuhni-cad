@@ -184,8 +184,8 @@ function addFirmaxHinge(moduleId,sideX,frontZ,y,sideSign,frontMount=false){
   const seat=new THREE.Mesh(new THREE.BoxGeometry(8,13,13),nickel);seat.position.set(sideSign*8,0,-5);fixed.add(seat);
  }
  const moving=new THREE.Group();assembly.add(moving);
- const cup=new THREE.Mesh(new THREE.CylinderGeometry(17.5,17.5,9,36),nickel);cup.rotation.x=Math.PI/2;cup.position.set(sideSign*27,0,6.5);moving.add(cup);
- const cap=new THREE.Mesh(new THREE.CylinderGeometry(13,13,1.5,36),dark);cap.rotation.x=Math.PI/2;cap.position.set(sideSign*27,0,11.5);moving.add(cap);
+ const cup=new THREE.Mesh(new THREE.CylinderGeometry(17.5,17.5,9,36),nickel);cup.rotation.x=Math.PI/2;cup.position.set(sideSign*27,0,-12.5);moving.add(cup);
+ const cap=new THREE.Mesh(new THREE.CylinderGeometry(13,13,1.5,36),dark);cap.rotation.x=Math.PI/2;cap.position.set(sideSign*27,0,-18.25);moving.add(cap);
  const arm1=new THREE.Mesh(new THREE.BoxGeometry(28,7,8),nickel);arm1.position.set(sideSign*10,0,-12);arm1.rotation.y=sideSign*.22;moving.add(arm1);
  const arm2=new THREE.Mesh(new THREE.BoxGeometry(20,6,7),dark);arm2.position.set(sideSign*20,3,-4);arm2.rotation.y=-sideSign*.3;moving.add(arm2);
  [[sideSign*5,0,-12],[sideSign*19,3,-4]].forEach(v=>{const pin=new THREE.Mesh(new THREE.CylinderGeometry(3,3,9,16),dark);pin.position.set(v[0],v[1],v[2]);pin.rotation.z=Math.PI/2;moving.add(pin)});
