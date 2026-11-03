@@ -300,7 +300,39 @@ function syncModuleFacades(moduleId){
  }finally{buildingModuleId=previousBuildingModuleId}
 }function applyModuleDimensions(){
  if(!selected||individualMode)return;
- const moduleId=selected.userData.moduleId;if(parts.some(p=>p.userData.moduleId===moduleId&&p.userData.drawerModule)){$('hint').textContent='Габариты модуля с ящиками пока фиксированы: 800 × 720 × 520 мм. Перерасчёт направляющих и коробов добавим отдельно.';return}const hadFacades=parts.some(p=>p.userData.moduleId===moduleId&&p.userData.type==='facade');
+ const moduleId=selected.userData.moduleId;
+ const drawerGroup=parts.filter(p=>p.userData.moduleId===moduleId);
+ if(drawerGroup.some(p=>p.userData.drawerModule)){
+  const oldLeft=drawerGroup.find(p=>p.userData.name==='Боковина левая'),oldRight=drawerGroup.find(p=>p.userData.name==='Боковина правая');
+  if(!oldLeft||!oldRight)return;
+  const target={x:Math.max(100,Math.round(+$('moduleW').value||oldLeft.userData.moduleWidth||800)),y:Math.max(200,Math.round(+$('moduleH').value||oldLeft.userData.moduleHeight||720)),z:Math.max(250,Math.round(+$('moduleD').value||oldLeft.userData.moduleDepth||520))};
+  const variant=drawerGroup.find(p=>p.userData.drawerVariant)?.userData.drawerVariant||'two';
+  const centerX=(oldLeft.position.x+oldRight.position.x)/2,centerZ=(oldLeft.position.z+oldRight.position.z)/2;
+  const axisX=oldRight.position.x-oldLeft.position.x,axisZ=oldRight.position.z-oldLeft.position.z;
+  const angle=Math.atan2(-axisZ,axisX);
+  const foot=drawerGroup.find(p=>p.userData.name==='Опора Volpato 31 — основание');
+  const baseY=foot?foot.position.y-5:oldLeft.position.y-oldLeft.userData.size.h/2-116;
+  drawerGroup.forEach(p=>{model.remove(p);if(p.geometry)p.geometry.dispose();const i=parts.indexOf(p);if(i>=0)parts.splice(i,1)});
+  buildingModuleId=moduleId;
+  let rebuilt;
+  try{rebuilt=buildDrawerModule({THREE,addPart,addRoundPart,width:target.x,height:target.y,depth:target.z,legsHeight:100,variant})}
+  finally{buildingModuleId=null}
+  const turn=new THREE.Matrix4().makeRotationY(angle);
+  const newGroup=parts.filter(p=>p.userData.moduleId===moduleId);
+  newGroup.forEach(p=>{
+   p.position.applyMatrix4(turn);p.position.x+=centerX;p.position.y+=baseY;p.position.z+=centerZ;
+   p.rotation.y+=angle;
+   p.userData.moduleWidth=target.x;p.userData.moduleHeight=target.y;p.userData.moduleDepth=target.z;
+   p.userData.drawerModule=true;p.userData.drawerVariant=variant;
+   if(p.userData.drawerId)p.userData.drawerDepth=rebuilt.dimensions.drawerDepth;
+   p.updateMatrixWorld(true);
+  });
+  selectPart(newGroup.find(p=>p.userData.name==='Боковина левая')||newGroup[0],false);
+  refreshList();updateHandles();
+  $('hint').textContent='Модуль пересчитан: корпус, фасады, короба и направляющие подогнаны под новые размеры.';
+  return;
+ }
+ const hadFacades=parts.some(p=>p.userData.moduleId===moduleId&&p.userData.type==='facade');
  const oldFacades=parts.filter(p=>p.userData.moduleId===moduleId&&p.userData.type==='facade'),oldHinges=parts.filter(p=>p.userData.moduleId===moduleId&&p.userData.hingeAssembly),legs=parts.filter(p=>p.userData.moduleId===moduleId&&p.userData.type==='leg');
  const body=parts.filter(p=>p.userData.moduleId===moduleId&&p.userData.type!=='facade'&&p.userData.type!=='leg'&&!p.userData.hingeAssembly);
  if(!body.length)return;
