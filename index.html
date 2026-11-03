@@ -228,6 +228,7 @@ function syncModuleFacades(moduleId){const existing=parts.filter(p=>p.userData.m
  const hadFacades=parts.some(p=>p.userData.moduleId===moduleId&&p.userData.type==='facade');
  const oldFacades=parts.filter(p=>p.userData.moduleId===moduleId&&p.userData.type==='facade');
  const oldHinges=parts.filter(p=>p.userData.moduleId===moduleId&&p.userData.hingeAssembly);
+ const legs=parts.filter(p=>p.userData.moduleId===moduleId&&p.userData.type==='leg');
  const body=parts.filter(p=>p.userData.moduleId===moduleId&&p.userData.type!=='facade'&&p.userData.type!=='leg'&&!p.userData.hingeAssembly);
  if(!body.length)return;
  const box=new THREE.Box3();body.forEach(p=>{p.updateMatrixWorld(true);box.expandByObject(p)});
@@ -259,6 +260,15 @@ function syncModuleFacades(moduleId){const existing=parts.filter(p=>p.userData.m
  });
  const left=body.find(p=>p.userData.name==='Боковина левая');
  const bottomY=left?left.position.y-left.userData.size.h/2:0;
+ // Опоры остаются отдельными деталями, но их положение пересчитывается относительно корпуса.
+ // Сдвигаем их к новым углам тумбы, сохраняя высоту и физические размеры ножек.
+ const newBottomY=center.y+(box.min.y-center.y)*scale.y;
+ legs.forEach(p=>{
+  p.position.x=center.x+(p.position.x-center.x)*scale.x;
+  p.position.z=center.z+(p.position.z-center.z)*scale.z;
+  p.position.y+=newBottomY-box.min.y;
+  p.updateMatrixWorld(true);
+ });
  addCabinetHinges(moduleId,target.x,target.y,target.z,bottomY);
  if(hadFacades)syncModuleFacades(moduleId);
  selectPart(parts.find(p=>p.userData.moduleId===moduleId&&p.userData.type!=='facade'&&p.userData.type!=='hinge'),false);
