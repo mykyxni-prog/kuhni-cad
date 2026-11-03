@@ -1,3 +1,4 @@
+import * as THREE from "three";
 // Drawer module library for My Kitchen Pro.
 // The caller sets buildingModuleId before invoking buildDrawerModule().
 export function buildDrawerModule({ THREE, addPart, addRoundPart, width = 800, height = 720, depth = 520, legsHeight = 100, variant = "two" }) {
