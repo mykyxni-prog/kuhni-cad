@@ -52,7 +52,15 @@ function captureUndoSnapshot(){
  }catch(err){console.warn('Не удалось сохранить шаг отмены',err)}
 }
 function undoAction(){
- const state=undoStack.pop();if(!state)return;
+ let state=undoStack.pop();
+ // Не позволяем ошибочному пустому снимку стереть уже собранную кухню.
+ // Если в сцене несколько модулей, пустой снимок не может быть корректным
+ // результатом отмены одного последнего действия.
+ while(state&&state.parts.length===0&&new Set(parts.map(p=>p.userData.moduleId)).size>1){
+  disposeUndoState(state);
+  state=undoStack.pop();
+ }
+ if(!state)return;
  const keep=new Set(state.parts.map(x=>x.mesh));
  parts.forEach(mesh=>{if(!keep.has(mesh)){model.remove(mesh);mesh.geometry?.dispose();if(Array.isArray(mesh.material))mesh.material.forEach(m=>m?.dispose());else mesh.material?.dispose()}});
  state.parts.forEach(x=>{
