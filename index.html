@@ -52,15 +52,19 @@ function captureUndoSnapshot(){
  }catch(err){console.warn('Не удалось сохранить шаг отмены',err)}
 }
 function undoAction(){
- let state=undoStack.pop();
- // Не позволяем ошибочному пустому снимку стереть уже собранную кухню.
- // Если в сцене несколько модулей, пустой снимок не может быть корректным
- // результатом отмены одного последнего действия.
- while(state&&state.parts.length===0&&new Set(parts.map(p=>p.userData.moduleId)).size>1){
+ const state=undoStack.pop();if(!state)return;
+ // Если перед добавлением фасадов в историю ошибочно попал пустой снимок,
+ // отменяем именно добавление фасадов, сохраняя корпус и остальные детали.
+ if(state.parts.length===0&&parts.some(p=>p.userData.type==='facade')&&parts.some(p=>p.userData.type!=='facade')){
   disposeUndoState(state);
-  state=undoStack.pop();
+  const facadeParts=parts.filter(p=>p.userData.type==='facade');
+  facadeParts.forEach(p=>{model.remove(p);p.geometry?.dispose();if(Array.isArray(p.material))p.material.forEach(m=>m?.dispose());else p.material?.dispose()});
+  parts=parts.filter(p=>p.userData.type!=='facade');
+  const moduleId=facadeParts[0]?.userData.moduleId;
+  selectPart(parts.find(p=>p.userData.moduleId===moduleId)||parts[0]||null,false);
+  refreshList();updateHandles();updateUndoButton();$('hint').textContent='Фасады отменены; корпус и остальные детали сохранены.';
+  return;
  }
- if(!state)return;
  const keep=new Set(state.parts.map(x=>x.mesh));
  parts.forEach(mesh=>{if(!keep.has(mesh)){model.remove(mesh);mesh.geometry?.dispose();if(Array.isArray(mesh.material))mesh.material.forEach(m=>m?.dispose());else mesh.material?.dispose()}});
  state.parts.forEach(x=>{
