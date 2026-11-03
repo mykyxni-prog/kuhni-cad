@@ -49,9 +49,9 @@ export function buildDrawerModule({ THREE, addPart, addRoundPart, width = 800, h
     const lower = Math.round(height / 2 - 3);
     const upper = (available - lower) / 2;
     faceHeights = [lower, upper, upper];
-  } else if (variant === "three") {
-    const each = (totalFaceHeight - 2 * betweenGap) / 3;
-    faceHeights = [each, each, each];
+  } else if (variant === "four") {
+    const each = (totalFaceHeight - 3 * betweenGap) / 4;
+    faceHeights = [each, each, each, each];
   } else {
     throw new Error("Неизвестная схема ящиков: " + variant);
   }
