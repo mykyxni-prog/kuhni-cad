@@ -174,8 +174,8 @@ function addFirmaxHinge(moduleId,sideX,frontZ,y,sideSign,frontMount=false){
  const fixed=new THREE.Group();assembly.add(fixed);
  // Mounting plate: on corner modules its flat face rests directly against the false panel.
  if(frontMount){
-  const plate=new THREE.Mesh(new THREE.BoxGeometry(34,42,5),dark);plate.position.set(sideSign*17,0,10.5);fixed.add(plate);
-  [-14,14].forEach(dy=>{const screw=new THREE.Mesh(new THREE.CylinderGeometry(2.5,2.5,2,16),nickel);screw.rotation.x=Math.PI/2;screw.position.set(sideSign*17,dy,14);fixed.add(screw)});
+  const plate=new THREE.Mesh(new THREE.BoxGeometry(34,42,5),dark);plate.position.set(sideSign*17,0,-10.5);fixed.add(plate);
+  [-14,14].forEach(dy=>{const screw=new THREE.Mesh(new THREE.CylinderGeometry(2.5,2.5,2,16),nickel);screw.rotation.x=Math.PI/2;screw.position.set(sideSign*17,dy,-14);fixed.add(screw)});
  }else{
   // Visible mounting plate fixed to the cabinet side wall, with two screw heads
   const plate=new THREE.Mesh(new THREE.BoxGeometry(5,42,34),dark);plate.position.set(sideSign*3,0,-19);fixed.add(plate);
