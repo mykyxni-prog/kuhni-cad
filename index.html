@@ -47,7 +47,7 @@ function updateUndoButton(){const b=$('undoBtn');if(b)b.disabled=undoStack.lengt
 function disposeUndoState(state){state.parts.forEach(x=>{x.geometry?.dispose();if(Array.isArray(x.material))x.material.forEach(m=>m?.dispose());else x.material?.dispose()})}
 function captureUndoSnapshot(){
  try{
-  const state={parts:parts.map(mesh=>({mesh,geometry:mesh.geometry.clone(),material:Array.isArray(mesh.material)?mesh.material.map(m=>m.clone()):mesh.material.clone(),position:mesh.position.clone(),rotation:mesh.rotation.clone(),quaternion:mesh.quaternion.clone(),scale:mesh.scale.clone(),userData:{...mesh.userData,size:mesh.userData.size?{...mesh.userData.size}:undefined,hingePivot:mesh.userData.hingePivot?{...mesh.userData.hingePivot,closedRotation:[...mesh.userData.hingePivot.closedRotation]}:undefined},movingLinkRotation:mesh.userData.movingLink?.rotation?.clone()})),selected,individualMode,nextId,nextModuleId,roomOn,wallColor:$('wallColor').value,floorColor:$('floorColor').value};
+  const state={parts:parts.map(mesh=>({mesh,geometry:mesh.geometry.clone(),material:Array.isArray(mesh.material)?mesh.material.map(m=>m.clone()):mesh.material.clone(),position:mesh.position.clone(),rotation:mesh.rotation.clone(),quaternion:mesh.quaternion.clone(),scale:mesh.scale.clone(),userData:{...mesh.userData,size:mesh.userData.size?{...mesh.userData.size}:undefined,hingePivot:mesh.userData.hingePivot?{...mesh.userData.hingePivot,closedRotation:Array.isArray(mesh.userData.hingePivot.closedRotation)?[...mesh.userData.hingePivot.closedRotation]:mesh.userData.hingePivot.closedRotation}:undefined},movingLinkRotation:mesh.userData.movingLink?.rotation?.clone()})),selected,individualMode,nextId,nextModuleId,roomOn,wallColor:$('wallColor').value,floorColor:$('floorColor').value};
   undoStack.push(state);while(undoStack.length>undoLimit)disposeUndoState(undoStack.shift());updateUndoButton();
  }catch(err){console.warn('Не удалось сохранить шаг отмены',err)}
 }
@@ -58,7 +58,7 @@ function undoAction(){
  state.parts.forEach(x=>{
   const mesh=x.mesh;model.remove(mesh);mesh.geometry?.dispose();if(Array.isArray(mesh.material))mesh.material.forEach(m=>m?.dispose());else mesh.material?.dispose();
   mesh.geometry=x.geometry;mesh.material=x.material;mesh.position.copy(x.position);mesh.rotation.copy(x.rotation);mesh.quaternion.copy(x.quaternion);mesh.scale.copy(x.scale);
-  mesh.userData={...x.userData,size:x.userData.size?{...x.userData.size}:undefined,hingePivot:x.userData.hingePivot?{...x.userData.hingePivot,closedRotation:[...x.userData.hingePivot.closedRotation]}:undefined};
+  mesh.userData={...x.userData,size:x.userData.size?{...x.userData.size}:undefined,hingePivot:x.userData.hingePivot?{...x.userData.hingePivot,closedRotation:Array.isArray(x.userData.hingePivot.closedRotation)?[...x.userData.hingePivot.closedRotation]:x.userData.hingePivot.closedRotation}:undefined};
   if(mesh.userData.movingLink&&x.movingLinkRotation)mesh.userData.movingLink.rotation.copy(x.movingLinkRotation);
   model.add(mesh);
  });
