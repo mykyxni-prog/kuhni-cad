@@ -405,19 +405,31 @@ $('addFacade').onclick=()=>addByType('facade');$('addPanel').onclick=()=>addByTy
 $('clearBtn').onclick=()=>{if(!parts.length)return; if(!confirm('Удалить все детали со сцены?'))return;parts.forEach(p=>model.remove(p));parts=[];selectPart(null);refreshList()};function setView(which){const t=controls.target;camera.up.set(0,1,0);const r=4200;const positions={iso:[2300,1900,3900],front:[0,0,r],back:[0,0,-r],left:[-r,0,0],right:[r,0,0],top:[0,r,0]};if(which==='top')camera.up.set(0,0,-1);const v=positions[which]||positions.iso;camera.position.set(t.x+v[0],t.y+v[1],t.z+v[2]);controls.update()}function home(){controls.target.set(0,900,0);setView('iso')}$('frontBtn').onclick=()=>setView('front');$('toolHome').onclick=home;$('viewTop').onclick=()=>setView('top');$('viewFront').onclick=()=>setView('front');$('viewLeft').onclick=()=>setView('left');$('viewRight').onclick=()=>setView('right');$('viewBack').onclick=()=>setView('back');$('turnLeft').onclick=()=>turnSelectedModule(-1);$('turnRight').onclick=()=>turnSelectedModule(1);$('toolSelect').onclick=()=>$('hint').textContent='Щёлкни по детали, чтобы выбрать; Delete — удалить';$('roomBtn').onclick=()=>{roomOn=!roomOn;room.visible=roomOn;grid.visible=!roomOn;$('roomBtn').textContent='Комната: '+(roomOn?'вкл.':'выкл.');scene.background=new THREE.Color(roomOn?'#d8d3c9':'#303633')};$('wallColor').addEventListener('input',e=>{wallMat.color.set(e.target.value)});$('floorColor').addEventListener('input',e=>{floorMat.color.set(e.target.value)});
 function projectData(){return {format:'kuhni-cad-project',version:3,createdAt:new Date().toISOString(),roomOn,wallColor:$('wallColor').value,floorColor:$('floorColor').value,parts:parts.map(p=>{const userData=p.userData;p.userData={...userData};delete p.userData.movingLink;let object;try{object=p.toJSON()}finally{p.userData=userData}return {object}})}}
 $('newProjectBtn').onclick=()=>{if(parts.length&&!confirm('Создать новый проект? Несохранённые изменения будут потеряны.'))return;parts.forEach(p=>{model.remove(p);p.geometry.dispose();if(Array.isArray(p.material))p.material.forEach(m=>m.dispose());else p.material?.dispose()});parts=[];selected=null;buildingModuleId=null;nextId=1;nextModuleId=1;selectPart(null);refreshList();home();$('hint').textContent='Новый проект создан. Можно начинать проектирование.'};
-$('saveBtn').onclick=()=>{
+$('saveBtn').onclick=async()=>{
  const filename='kuhni-project-'+new Date().toISOString().slice(0,10)+'.json';
  try{
   const content=JSON.stringify(projectData(),null,2);
-  const file=new Blob([content],{type:'application/json'});
-  const url=URL.createObjectURL(file);
-  const a=document.createElement('a');
-  a.href=url;a.download=filename;a.textContent='Скачать файл проекта: '+filename;
-  a.style.cssText='display:inline-block;color:var(--green);font-weight:700;padding:6px 0';
-  $('hint').replaceChildren(document.createTextNode('Файл проекта подготовлен. Нажми ссылку для сохранения: '),a);
+  const file=new File([content],filename,{type:'application/json'});
+  if(window.showSaveFilePicker){
+   const handle=await window.showSaveFilePicker({
+    suggestedName:filename,
+    types:[{description:'Проект My Kitchen Pro',accept:{'application/json':['.json']}}]
+   });
+   const writable=await handle.createWritable();
+   await writable.write(file);
+   await writable.close();
+   $('hint').textContent='Проект сохранён: '+filename;
+   return;
+  }
+  const url=URL.createObjectURL(file),a=document.createElement('a');
+  a.href=url;a.download=filename;a.style.display='none';
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),120000);
+  $('hint').textContent='Загрузка проекта началась. На iPhone файл будет в приложении «Файлы» → «Загрузки».';
  }catch(err){
-  console.error('Не удалось подготовить проект',err);
-  $('hint').textContent='Не удалось подготовить проект: '+(err?.message||String(err));
+  if(err?.name==='AbortError'){$('hint').textContent='Сохранение отменено.';return}
+  console.error('Не удалось сохранить проект',err);
+  $('hint').textContent='Не удалось сохранить проект: '+(err?.message||String(err));
  }
 };
 $('openBtn').onclick=()=>$('projectFile').click();
