@@ -34,7 +34,7 @@
 <script type="module">
 import * as THREE from 'three';
 import {OrbitControls} from 'https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js';
-const $=id=>document.getElementById(id),stage=$('stage'),scene=new THREE.Scene();scene.background=new THREE.Color('#e6e3dd');
+const $=id=>document.getElementById(id),stage=$('stage'),scene=new THREE.Scene();scene.background=new THREE.Color('#d8d3c9');
 const camera=new THREE.PerspectiveCamera(42,1,1,50000),renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.1;stage.appendChild(renderer.domElement);
 const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.target.set(0,900,0);camera.position.set(2500,2100,4200);
 scene.add(new THREE.HemisphereLight(0xffffff,0x77766d,2));const light=new THREE.DirectionalLight(0xffffff,2.4);light.position.set(1800,3200,2200);scene.add(light);const fill=new THREE.DirectionalLight(0xe5edff,1);fill.position.set(-1800,1400,-2000);scene.add(fill);
