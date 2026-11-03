@@ -354,15 +354,30 @@ function autoTurnModuleToWall(members){
  const current=members[0].userData.autoWallTurn||0,desired=wallSide==='left'?1:0;
  if(current===desired)return false;
  const center=box.getCenter(new THREE.Vector3()),angle=(desired-current)*Math.PI/2;
- const saved=members.map(p=>({p,pos:p.position.clone(),rot:p.rotation.clone(),quat:p.quaternion.clone()}));
- members.forEach(p=>{p.position.sub(center).applyAxisAngle(new THREE.Vector3(0,1,0),angle).add(center);p.rotateY(angle);p.updateMatrixWorld(true)});
+ const saved=members.map(p=>({p,pos:p.position.clone(),rot:p.rotation.clone(),quat:p.quaternion.clone(),closedRotation:p.userData.hingePivot?.closedRotation}));
+ members.forEach(p=>{
+  p.position.sub(center).applyAxisAngle(new THREE.Vector3(0,1,0),angle).add(center);
+  p.rotateY(angle);
+  // If this door has already been opened once, its hinge pivot is baked into
+  // the geometry and its closed rotation must follow every later module turn.
+  if(p.userData.type==='facade'&&p.userData.hingePivot){
+   const pivot=p.userData.hingePivot;
+   if(Array.isArray(pivot.closedRotation))pivot.closedRotation[1]=(pivot.closedRotation[1]||0)+angle;
+   else pivot.closedRotation=(pivot.closedRotation||0)+angle;
+  }
+  p.updateMatrixWorld(true);
+ });
  const turnedBox=new THREE.Box3();members.forEach(p=>turnedBox.expandByObject(p));
  const shift=wallSide==='left'?new THREE.Vector3(roomLeft+10-turnedBox.min.x,0,0):new THREE.Vector3(0,0,roomBack+10-turnedBox.min.z);
  members.forEach(p=>{p.position.add(shift);p.updateMatrixWorld(true)});
  const finalBox=new THREE.Box3();members.forEach(p=>finalBox.expandByObject(p));
- const blocked=members.some(p=>{const b=new THREE.Box3().setFromObject(p);return dragObstacles.some(o=>b.intersectsBox(o))});
+ const blocked=members.some(p=>{const boxPart=new THREE.Box3().setFromObject(p);return dragObstacles.some(o=>boxPart.intersectsBox(o))});
  if(blocked||finalBox.min.y < -3||(roomOn&&finalBox.max.y>roomHeight)){
-  saved.forEach(a=>{a.p.position.copy(a.pos);a.p.rotation.copy(a.rot);a.p.quaternion.copy(a.quat);a.p.updateMatrixWorld(true)});
+  saved.forEach(a=>{
+   a.p.position.copy(a.pos);a.p.rotation.copy(a.rot);a.p.quaternion.copy(a.quat);
+   if(a.p.userData.hingePivot)a.p.userData.hingePivot.closedRotation=a.closedRotation;
+   a.p.updateMatrixWorld(true);
+  });
   return false;
  }
  members.forEach(p=>{p.userData.autoWallTurn=desired});
