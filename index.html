@@ -343,7 +343,13 @@ function syncModuleFacades(moduleId){
  const oldFacades=parts.filter(p=>p.userData.moduleId===moduleId&&p.userData.type==='facade'),oldHinges=parts.filter(p=>p.userData.moduleId===moduleId&&p.userData.hingeAssembly),legs=parts.filter(p=>p.userData.moduleId===moduleId&&p.userData.type==='leg');
  const body=parts.filter(p=>p.userData.moduleId===moduleId&&p.userData.type!=='facade'&&p.userData.type!=='leg'&&!p.userData.hingeAssembly);
  if(!body.length)return;
- const orientation=body[0].userData.autoWallTurn||0,box=new THREE.Box3();body.forEach(p=>{p.updateMatrixWorld(true);box.expandByObject(p)});
+ const leftSide=body.find(p=>p.userData.name==='Боковина левая'),rightSide=body.find(p=>p.userData.name==='Боковина правая');
+ // Определяем ось ширины по фактическому положению боковин, а не по старому флагу стены.
+ // Это сохраняет правильные ширину и глубину после переноса/поворота шкафа на любую стену.
+ const sideDX=leftSide&&rightSide?rightSide.position.x-leftSide.position.x:1,sideDZ=leftSide&&rightSide?rightSide.position.z-leftSide.position.z:0;
+ const orientation=Math.abs(sideDZ)>Math.abs(sideDX)?1:0;
+ body.forEach(p=>{p.userData.autoWallTurn=orientation});
+ const box=new THREE.Box3();body.forEach(p=>{p.updateMatrixWorld(true);box.expandByObject(p)});
  const oldSize=box.getSize(new THREE.Vector3()),center=box.getCenter(new THREE.Vector3());
  const target={x:Math.max(1,+$('moduleW').value||0),y:Math.max(1,+$('moduleH').value||0),z:Math.max(1,+$('moduleD').value||0)};
  if(!$('moduleW').value)target.x=Math.round(orientation?oldSize.z:oldSize.x);
