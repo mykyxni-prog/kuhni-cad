@@ -192,12 +192,18 @@ function addFirmaxHinge(moduleId,sideX,frontZ,y,sideSign,frontMount=false){
  assembly.userData.movingLink=moving;model.add(assembly);parts.push(assembly);return assembly;
 }
 function addCabinetHinges(moduleId,w,h,d,bottomY){
- const left=parts.find(p=>p.userData.moduleId===moduleId&&p.userData.name==='Боковина левая');
- const right=parts.find(p=>p.userData.moduleId===moduleId&&p.userData.name==='Боковина правая');
+ const left=parts.find(p=>p.userData.moduleId===moduleId&&p.userData.name==='Боковина левая'),right=parts.find(p=>p.userData.moduleId===moduleId&&p.userData.name==='Боковина правая');
  if(!left||!right)return;
- const ys=[bottomY+110,bottomY+h-110];
- if(w<=600){ys.forEach(y=>addFirmaxHinge(moduleId,left.position.x+8,left.position.z+d/2-2,y,1))}
- else{ys.forEach(y=>{addFirmaxHinge(moduleId,left.position.x+8,left.position.z+d/2-2,y,1);addFirmaxHinge(moduleId,right.position.x-8,right.position.z+d/2-2,y,-1)})}
+ const orientation=left.userData.autoWallTurn||0,ys=[bottomY+110,bottomY+h-110];
+ if(!orientation){
+  if(w<=600){ys.forEach(y=>addFirmaxHinge(moduleId,left.position.x+8,left.position.z+d/2-2,y,1))}
+  else{ys.forEach(y=>{addFirmaxHinge(moduleId,left.position.x+8,left.position.z+d/2-2,y,1);addFirmaxHinge(moduleId,right.position.x-8,right.position.z+d/2-2,y,-1)})}
+  return;
+ }
+ const center=new THREE.Vector3((left.position.x+right.position.x)/2,(left.position.y+right.position.y)/2,(left.position.z+right.position.z)/2),angle=orientation*Math.PI/2;
+ const addAt=(localX,localZ,y,sideSign)=>{const offset=new THREE.Vector3(localX,0,localZ).applyAxisAngle(new THREE.Vector3(0,1,0),angle),hinge=addFirmaxHinge(moduleId,center.x+offset.x,center.z+offset.z,y,sideSign);hinge.rotation.y=angle;hinge.userData.autoWallTurn=orientation;return hinge};
+ if(w<=600){ys.forEach(y=>addAt(-w/2+8,d/2-2,y,1))}
+ else{ys.forEach(y=>{addAt(-w/2+8,d/2-2,y,1);addAt(w/2-8,d/2-2,y,-1)})}
 }
 function addCabinet(w=800,h=720,d=520,doors=false,withLegs=false,withShelf=true,kind='standard'){const t=16,legsH=withLegs?100:0,sideH=h-t,nextX=getNextModuleX(w);buildingModuleId=nextModuleId++;const x=0,z=0,bottomY=legsH,sideY=bottomY+t+sideH/2,topY=bottomY+h,innerW=w-2*t;addPart('panel','Боковина левая',t,sideH,d,x-w/2+t/2,sideY,z,'oak',t);addPart('panel','Боковина правая',t,sideH,d,x+w/2-t/2,sideY,z,'oak',t);addPart('panel','Дно накладное',w,t,d,x,bottomY+t/2,z,'oak',t);if(withShelf)addPart('shelf','Полка',innerW,t,d-5,x,bottomY+t+sideH/2,z,'oak',t);if(kind==='oven'){const drawerFrontH=h-600-3,dividerTopY=topY-600;addPart('shelf','Полка под духовку',innerW,t,d,x,dividerTopY-t/2,z,'oak',t);addPart('panel','Фасад ящика',w-3,drawerFrontH,16,x,bottomY+drawerFrontH/2,d/2+8,'milk',16);const boxW=innerW-24,boxD=Math.min(450,d-70),boxH=70,boxZ=d/2-16-boxD/2,boxY=bottomY+16+boxH/2;addPart('panel','Боковина ящика левая',12,boxH,boxD,x-boxW/2+6,boxY,boxZ,'oak',12);addPart('panel','Боковина ящика правая',12,boxH,boxD,x+boxW/2-6,boxY,boxZ,'oak',12);addPart('panel','Задняя стенка ящика',boxW-24,boxH,12,x,boxY,boxZ-boxD/2+6,'oak',12);addPart('panel','Дно ящика',boxW-24,12,boxD,x,bottomY+16+6,boxZ,'oak',12)}else if(kind==='sink'){const railHeight=80;addPart('panel','Переднее вертикальное усиление',innerW,railHeight,t,x,topY-railHeight/2,d/2-t/2,'oak',t)}else{const railH=t,railD=100;addPart('panel','Верхнее усиление переднее',innerW,railH,railD,x,topY-railH/2,d/2-railD/2,'oak',t);addPart('panel','Верхнее усиление заднее',innerW,railH,railD,x,topY-railH/2,-d/2+railD/2,'oak',t);addPart('back','Задняя стенка',w-3,h-3,4,x,bottomY+(h-3)/2,-d/2+2,'milk',4)}if(withLegs){for(const lx of [-w/2+55,w/2-55])for(const lz of [-d/2+55,d/2-55]){addRoundPart('Опора Volpato 31 — основание',48,10,lx,5,lz,'graphite');addRoundPart('Опора Volpato 31 — стойка',28,82,lx,51,lz,'graphite');addPart('leg','Опора Volpato 31 — верхнее крепление',46,8,46,lx,96,lz,'graphite',8)}}const id=buildingModuleId;buildingModuleId=null;const last=parts.filter(p=>p.userData.moduleId===id);if(last.length){const wallOffset=-3500+d/2+10;last.forEach(p=>{p.position.x+=nextX;p.position.z+=wallOffset;p.updateMatrixWorld(true)});const bounds=new THREE.Box3();last.forEach(p=>bounds.expandByObject(p));last.forEach(p=>{p.userData.moduleWidth=w;p.userData.moduleHeight=h;p.userData.moduleDepth=d});addCabinetHinges(id,w,h,d,bottomY);if(doors)syncModuleFacades(id);const center=bounds.getCenter(new THREE.Vector3());const viewOffset=camera.position.clone().sub(controls.target).normalize().multiplyScalar(2600);controls.target.copy(center);camera.position.copy(center).add(viewOffset);controls.update();selectPart(last[0],false)}}
 function toggleSelectedFacade(){
@@ -264,27 +270,50 @@ function removeSelected(){if(!selected){$('hint').textContent='Сначала в
 function duplicateSelected(){if(!selected)return $('hint').textContent='Сначала выбери модуль или деталь';const source=individualMode?[selected]:parts.filter(p=>p.userData.moduleId===selectedModuleId),newModule=nextModuleId++;source.forEach(p=>{const u=p.userData,s=u.size;const clone=addPart(u.type,u.name+' — копия',s.w,s.h,s.d,p.position.x+100,p.position.y,p.position.z,u.material,u.thickness);clone.userData.moduleId=newModule});selectPart(parts.find(p=>p.userData.moduleId===newModule),individualMode);refreshList()}
 function applyProperties(){if(!selected)return;if(!individualMode){$('hint').textContent='Для редактирования одной детали удерживай Shift и щёлкни по ней.';return}const w=Math.max(1,+$('partW').value||1),h=Math.max(1,+$('partH').value||1),d=Math.max(1,+$('partD').value||1),p=selected.userData;p.name=$('partName').value.trim()||'Деталь';p.size={w:w,h:h,d:d};p.thickness=Math.max(1,+$('partT').value||18);p.material=$('partMat').value;selected.geometry.dispose();selected.geometry=p.shape==='cylinder'?new THREE.CylinderGeometry(Math.max(w,d)/2,Math.max(w,d)/2,h,24):new THREE.BoxGeometry(w,h,d);if(p.shape==='cylinder'){p.size.w=Math.max(w,d);p.size.d=Math.max(w,d);$('partW').value=p.size.w;$('partD').value=p.size.d}selected.material=makeMaterial(p.material);selected.position.set(+$('posX').value||0,Math.max(0,+$('posY').value||0),+$('posZ').value||0);$('hint').textContent='Размеры применены';selectPart(selected)}
 function stepSize(axis,delta){if(!selected)return;$('part'+axis).value=Math.max(1,(+$('part'+axis).value||1)+delta);applyProperties()}
-function syncModuleFacades(moduleId){const existing=parts.filter(p=>p.userData.moduleId===moduleId&&p.userData.type==='facade');existing.forEach(p=>{model.remove(p);p.geometry.dispose();const i=parts.indexOf(p);if(i>=0)parts.splice(i,1)});const group=parts.filter(p=>p.userData.moduleId===moduleId&&p.userData.type!=='facade'&&p.userData.type!=='leg'&&p.userData.type!=='hinge');if(!group.length)return;const left=group.find(p=>p.userData.name==='Боковина левая'),right=group.find(p=>p.userData.name==='Боковина правая');if(!left||!right)return;const mw=Math.round(group.find(p=>Number.isFinite(p.userData.moduleWidth))?.userData.moduleWidth??(Math.abs(right.position.x-left.position.x)+(left.userData.size.w+right.userData.size.w)/2)),b=new THREE.Box3();group.forEach(p=>{p.updateMatrixWorld(true);b.expandByObject(p)});const bodyH=Math.round(b.max.y-b.min.y),split=mw>600,count=split?2:1,doorW=split?Math.floor((mw-4)/2):mw-3,doorH=bodyH-3,y=(b.min.y+b.max.y)/2,z=left.position.z+left.userData.size.d/2+8,centerX=(left.position.x+right.position.x)/2;for(let i=0;i<count;i++){const x=split?centerX+(i===0?-1:1)*(doorW+4)/2:centerX,mesh=addPart('facade',split?'Фасад '+(i+1):'Фасад',doorW,doorH,16,x,y,z,'milk',16);mesh.userData.moduleId=moduleId;const cornerHinge=parts.find(p=>p.userData.moduleId===moduleId&&p.userData.cornerHinge);if(cornerHinge)mesh.userData.cornerHingeSide=cornerHinge.userData.sideSign===1?1:-1}}function applyModuleDimensions(){
+function syncModuleFacades(moduleId){
+ const existing=parts.filter(p=>p.userData.moduleId===moduleId&&p.userData.type==='facade');
+ existing.forEach(p=>{model.remove(p);p.geometry.dispose();const i=parts.indexOf(p);if(i>=0)parts.splice(i,1)});
+ const group=parts.filter(p=>p.userData.moduleId===moduleId&&p.userData.type!=='facade'&&p.userData.type!=='leg'&&p.userData.type!=='hinge');
+ if(!group.length)return;
+ const left=group.find(p=>p.userData.name==='Боковина левая'),right=group.find(p=>p.userData.name==='Боковина правая');
+ if(!left||!right)return;
+ const orientation=group[0].userData.autoWallTurn||0;
+ const mw=Math.round(group.find(p=>Number.isFinite(p.userData.moduleWidth))?.userData.moduleWidth??(Math.abs(right.position.x-left.position.x)+Math.abs(right.position.z-left.position.z)+(left.userData.size.w+right.userData.size.w)/2));
+ const box=new THREE.Box3();group.forEach(p=>{p.updateMatrixWorld(true);box.expandByObject(p)});
+ const size=box.getSize(new THREE.Vector3()),center=box.getCenter(new THREE.Vector3());
+ const bodyH=Math.round(size.y),depth=Math.round(orientation?size.x:size.z),split=mw>600,count=split?2:1,doorW=split?Math.floor((mw-4)/2):mw-3,doorH=bodyH-3,y=(box.min.y+box.max.y)/2;
+ const angle=orientation*Math.PI/2,front=new THREE.Vector3(0,0,depth/2+8).applyAxisAngle(new THREE.Vector3(0,1,0),angle);
+ const frontX=center.x+front.x,frontZ=center.z+front.z;
+ for(let i=0;i<count;i++){
+  const localOffset=split?(i===0?-(doorW+4)/2:(doorW+4)/2):0;
+  const offset=new THREE.Vector3(localOffset,0,0).applyAxisAngle(new THREE.Vector3(0,1,0),angle);
+  const mesh=addPart('facade',split?'Фасад '+(i+1):'Фасад',doorW,doorH,16,center.x+offset.x+frontX-center.x,y,center.z+offset.z+frontZ-center.z,'milk',16);
+  mesh.rotation.y=angle;mesh.userData.autoWallTurn=orientation;
+  const cornerHinge=parts.find(p=>p.userData.moduleId===moduleId&&p.userData.cornerHinge);
+  if(cornerHinge)mesh.userData.cornerHingeSide=cornerHinge.userData.sideSign===1?1:-1;
+ }
+}
+function applyModuleDimensions(){
  if(!selected||individualMode)return;
- const moduleId=selected.userData.moduleId;
- const hadFacades=parts.some(p=>p.userData.moduleId===moduleId&&p.userData.type==='facade');
- const oldFacades=parts.filter(p=>p.userData.moduleId===moduleId&&p.userData.type==='facade');
- const oldHinges=parts.filter(p=>p.userData.moduleId===moduleId&&p.userData.hingeAssembly);
- const legs=parts.filter(p=>p.userData.moduleId===moduleId&&p.userData.type==='leg');
+ const moduleId=selected.userData.moduleId,hadFacades=parts.some(p=>p.userData.moduleId===moduleId&&p.userData.type==='facade');
+ const oldFacades=parts.filter(p=>p.userData.moduleId===moduleId&&p.userData.type==='facade'),oldHinges=parts.filter(p=>p.userData.moduleId===moduleId&&p.userData.hingeAssembly),legs=parts.filter(p=>p.userData.moduleId===moduleId&&p.userData.type==='leg');
  const body=parts.filter(p=>p.userData.moduleId===moduleId&&p.userData.type!=='facade'&&p.userData.type!=='leg'&&!p.userData.hingeAssembly);
  if(!body.length)return;
- const box=new THREE.Box3();body.forEach(p=>{p.updateMatrixWorld(true);box.expandByObject(p)});
+ const orientation=body[0].userData.autoWallTurn||0,box=new THREE.Box3();body.forEach(p=>{p.updateMatrixWorld(true);box.expandByObject(p)});
  const oldSize=box.getSize(new THREE.Vector3()),center=box.getCenter(new THREE.Vector3());
- const target={x:Math.max(1,+$('moduleW').value||oldSize.x),y:Math.max(1,+$('moduleH').value||oldSize.y),z:Math.max(1,+$('moduleD').value||oldSize.z)};
- const scale={x:target.x/oldSize.x,y:target.y/oldSize.y,z:target.z/oldSize.z};
+ const target={x:Math.max(1,+$('moduleW').value||0),y:Math.max(1,+$('moduleH').value||0),z:Math.max(1,+$('moduleD').value||0)};
+ if(!$('moduleW').value)target.x=Math.round(orientation?oldSize.z:oldSize.x);
+ if(!$('moduleH').value)target.y=Math.round(oldSize.y);
+ if(!$('moduleD').value)target.z=Math.round(orientation?oldSize.x:oldSize.z);
+ const localScale={x:target.x/(orientation?oldSize.z:oldSize.x),y:target.y/oldSize.y,z:target.z/(orientation?oldSize.x:oldSize.z)};
+ const worldScale={x:orientation?localScale.z:localScale.x,y:localScale.y,z:orientation?localScale.x:localScale.z};
  [...oldFacades,...oldHinges].forEach(p=>{model.remove(p);const i=parts.indexOf(p);if(i>=0)parts.splice(i,1);if(p.geometry)p.geometry.dispose()});
  body.forEach(p=>{
   p.userData.moduleWidth=target.x;p.userData.moduleHeight=target.y;p.userData.moduleDepth=target.z;
-  p.position.set(center.x+(p.position.x-center.x)*scale.x,center.y+(p.position.y-center.y)*scale.y,center.z+(p.position.z-center.z)*scale.z);
-  const u=p.userData,s0=u.size;
-  let factors=[scale.x,scale.y,scale.z],dims=[s0.w,s0.h,s0.d];
+  p.position.set(center.x+(p.position.x-center.x)*worldScale.x,center.y+(p.position.y-center.y)*worldScale.y,center.z+(p.position.z-center.z)*worldScale.z);
+  const u=p.userData,s0=u.size,factors=[localScale.x,localScale.y,localScale.z],dims=[s0.w,s0.h,s0.d];
   if(u.shape==='cylinder'){
-   const dia=Math.max(s0.w,s0.d),newDia=Math.max(1,dia*Math.max(scale.x,scale.z)),h=Math.max(1,s0.h*scale.y);
+   const dia=Math.max(s0.w,s0.d),newDia=Math.max(1,dia*Math.max(localScale.x,localScale.z)),h=Math.max(1,s0.h*localScale.y);
    p.geometry.dispose();p.geometry=new THREE.CylinderGeometry(newDia/2,newDia/2,h,24);u.size={w:newDia,h,d:newDia};
   }else{
    const thinAxis=dims.indexOf(Math.min(...dims));factors[thinAxis]=1;
@@ -294,29 +323,22 @@ function syncModuleFacades(moduleId){const existing=parts.filter(p=>p.userData.m
   p.updateMatrixWorld(true);
  });
  body.filter(p=>p.userData.name==='Верхнее усиление переднее'||p.userData.name==='Верхнее усиление заднее'||p.userData.name==='Переднее вертикальное усиление'||p.userData.type==='shelf').forEach(p=>{
-  const u=p.userData,w=Math.max(1,target.x-32);u.size.w=w;p.geometry.dispose();p.geometry=new THREE.BoxGeometry(w,u.size.h,u.size.d);p.position.x=center.x;p.updateMatrixWorld(true);
+  const u=p.userData,w=Math.max(1,target.x-32);u.size.w=w;p.geometry.dispose();p.geometry=new THREE.BoxGeometry(w,u.size.h,u.size.d);p.updateMatrixWorld(true);
  });
  body.filter(p=>p.userData.name==='Боковина левая'||p.userData.name==='Боковина правая').forEach(p=>{
-  const half=Math.max(0,(target.x-p.userData.size.w)/2);
-  p.position.x=center.x+(p.userData.name==='Боковина левая'?-half:half);p.updateMatrixWorld(true);
+  const half=Math.max(0,(target.x-p.userData.size.w)/2),sign=p.userData.name==='Боковина левая'?-1:1;
+  const offset=new THREE.Vector3(sign*half,0,0).applyAxisAngle(new THREE.Vector3(0,1,0),orientation*Math.PI/2);
+  p.position.x=center.x+offset.x;p.position.z=center.z+offset.z;p.updateMatrixWorld(true);
  });
- const left=body.find(p=>p.userData.name==='Боковина левая');
- const bottomY=left?left.position.y-left.userData.size.h/2:0;
- // Опоры остаются отдельными деталями, но их положение пересчитывается относительно корпуса.
- // Сдвигаем их к новым углам тумбы, сохраняя высоту и физические размеры ножек.
- const newBottomY=center.y+(box.min.y-center.y)*scale.y;
- legs.forEach(p=>{
-  p.position.x=center.x+(p.position.x-center.x)*scale.x;
-  p.position.z=center.z+(p.position.z-center.z)*scale.z;
-  p.position.y+=newBottomY-box.min.y;
-  p.updateMatrixWorld(true);
- });
+ const left=body.find(p=>p.userData.name==='Боковина левая'),bottomY=left?left.position.y-left.userData.size.h/2:0;
+ const newBottomY=center.y+(box.min.y-center.y)*worldScale.y;
+ legs.forEach(p=>{p.position.x=center.x+(p.position.x-center.x)*worldScale.x;p.position.z=center.z+(p.position.z-center.z)*worldScale.z;p.position.y+=newBottomY-box.min.y;p.updateMatrixWorld(true)});
  addCabinetHinges(moduleId,target.x,target.y,target.z,bottomY);
  if(hadFacades)syncModuleFacades(moduleId);
  selectPart(parts.find(p=>p.userData.moduleId===moduleId&&p.userData.type!=='facade'&&p.userData.type!=='hinge'),false);
- refreshList();
- $('hint').textContent=hadFacades?'Корпус, фасады и петли пересчитаны по новым габаритам':'Габариты всего шкафа изменены';
-} $('applyModuleBtn').onclick=applyModuleDimensions;function openModuleDialog(mesh){if(!mesh)return;selectPart(mesh,false);$('dialogW').value=$('moduleW').value;$('dialogH').value=$('moduleH').value;$('dialogD').value=$('moduleD').value;$('moduleBackdrop').style.display='block';$('moduleDialog').style.display='block'}function turnSelectedModule(direction){if(!selected){$('hint').textContent='Сначала выбери модуль.';return}const id=selected.userData.moduleId,group=parts.filter(p=>p.userData.moduleId===id);if(!group.length)return;model.updateMatrixWorld(true);const box=new THREE.Box3();group.forEach(p=>box.expandByObject(p));const c=box.getCenter(new THREE.Vector3());const turn=new THREE.Matrix4().makeTranslation(c.x,c.y,c.z).multiply(new THREE.Matrix4().makeRotationY(direction*Math.PI/2)).multiply(new THREE.Matrix4().makeTranslation(-c.x,-c.y,-c.z));group.forEach(p=>{p.applyMatrix4(turn);p.updateMatrixWorld(true)});model.updateMatrixWorld(true);selectPart(group.find(p=>p.userData.type!=='leg')||group[0],false);refreshList();$('hint').textContent=direction<0?'Модуль повёрнут влево на 90°':'Модуль повёрнут вправо на 90°'}function turnModule(direction){if(selectedModuleId==null)return;const group=parts.filter(p=>p.userData.moduleId===selectedModuleId);if(!group.length)return;model.updateMatrixWorld(true);const box=new THREE.Box3();group.forEach(p=>box.expandByObject(p));const center=box.getCenter(new THREE.Vector3()),toCenter=new THREE.Matrix4().makeTranslation(center.x,center.y,center.z),rotation=new THREE.Matrix4().makeRotationY(direction*Math.PI/2),fromCenter=new THREE.Matrix4().makeTranslation(-center.x,-center.y,-center.z),turn=new THREE.Matrix4().multiplyMatrices(toCenter,new THREE.Matrix4().multiplyMatrices(rotation,fromCenter));group.forEach(p=>{p.applyMatrix4(turn);p.updateMatrixWorld(true)});model.updateMatrixWorld(true);selectPart(group[0],false);refreshList();$('hint').textContent=direction<0?'Шкаф развёрнут влево на 90°':'Шкаф развёрнут вправо на 90°'}$('turnModuleLeft').onclick=()=>turnModule(-1);$('turnModuleRight').onclick=()=>turnModule(1);function closeModuleDialog(){$('moduleBackdrop').style.display='none';$('moduleDialog').style.display='none'}$('cancelModuleDialog').onclick=closeModuleDialog;$('moduleBackdrop').onclick=closeModuleDialog;$('saveModuleDialog').onclick=()=>{$('moduleW').value=$('dialogW').value;$('moduleH').value=$('dialogH').value;$('moduleD').value=$('dialogD').value;applyModuleDimensions();closeModuleDialog()};['moduleW','moduleH','moduleD'].forEach(id=>$(id).addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();applyModuleDimensions()}}));['dialogW','dialogH','dialogD'].forEach(id=>$(id).addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('saveModuleDialog').click()}}));const customFacadeKey='kuhniCadCustomFacades',ownerPriceKey='kuhniCadOwnerPrices',customMaterialKey='kuhniCadCustomMaterials';
+ refreshList();$('hint').textContent=hadFacades?'Корпус и фасады пересчитаны; фасады привязаны к корпусу':'Габариты всего шкафа изменены';
+}
+$('applyModuleBtn').onclick=applyModuleDimensions;function openModuleDialog(mesh){if(!mesh)return;selectPart(mesh,false);$('dialogW').value=$('moduleW').value;$('dialogH').value=$('moduleH').value;$('dialogD').value=$('moduleD').value;$('moduleBackdrop').style.display='block';$('moduleDialog').style.display='block'}function turnSelectedModule(direction){if(!selected){$('hint').textContent='Сначала выбери модуль.';return}const id=selected.userData.moduleId,group=parts.filter(p=>p.userData.moduleId===id);if(!group.length)return;model.updateMatrixWorld(true);const box=new THREE.Box3();group.forEach(p=>box.expandByObject(p));const c=box.getCenter(new THREE.Vector3());const turn=new THREE.Matrix4().makeTranslation(c.x,c.y,c.z).multiply(new THREE.Matrix4().makeRotationY(direction*Math.PI/2)).multiply(new THREE.Matrix4().makeTranslation(-c.x,-c.y,-c.z));group.forEach(p=>{p.applyMatrix4(turn);p.updateMatrixWorld(true)});model.updateMatrixWorld(true);selectPart(group.find(p=>p.userData.type!=='leg')||group[0],false);refreshList();$('hint').textContent=direction<0?'Модуль повёрнут влево на 90°':'Модуль повёрнут вправо на 90°'}function turnModule(direction){if(selectedModuleId==null)return;const group=parts.filter(p=>p.userData.moduleId===selectedModuleId);if(!group.length)return;model.updateMatrixWorld(true);const box=new THREE.Box3();group.forEach(p=>box.expandByObject(p));const center=box.getCenter(new THREE.Vector3()),toCenter=new THREE.Matrix4().makeTranslation(center.x,center.y,center.z),rotation=new THREE.Matrix4().makeRotationY(direction*Math.PI/2),fromCenter=new THREE.Matrix4().makeTranslation(-center.x,-center.y,-center.z),turn=new THREE.Matrix4().multiplyMatrices(toCenter,new THREE.Matrix4().multiplyMatrices(rotation,fromCenter));group.forEach(p=>{p.applyMatrix4(turn);p.updateMatrixWorld(true)});model.updateMatrixWorld(true);selectPart(group[0],false);refreshList();$('hint').textContent=direction<0?'Шкаф развёрнут влево на 90°':'Шкаф развёрнут вправо на 90°'}$('turnModuleLeft').onclick=()=>turnModule(-1);$('turnModuleRight').onclick=()=>turnModule(1);function closeModuleDialog(){$('moduleBackdrop').style.display='none';$('moduleDialog').style.display='none'}$('cancelModuleDialog').onclick=closeModuleDialog;$('moduleBackdrop').onclick=closeModuleDialog;$('saveModuleDialog').onclick=()=>{$('moduleW').value=$('dialogW').value;$('moduleH').value=$('dialogH').value;$('moduleD').value=$('dialogD').value;applyModuleDimensions();closeModuleDialog()};['moduleW','moduleH','moduleD'].forEach(id=>$(id).addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();applyModuleDimensions()}}));['dialogW','dialogH','dialogD'].forEach(id=>$(id).addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('saveModuleDialog').click()}}));const customFacadeKey='kuhniCadCustomFacades',ownerPriceKey='kuhniCadOwnerPrices',customMaterialKey='kuhniCadCustomMaterials';
 let customMaterials=[];try{customMaterials=JSON.parse(localStorage.getItem(customMaterialKey)||'[]')}catch(e){customMaterials=[]}
 function readCatalogImage(input){return new Promise((resolve,reject)=>{const file=input.files&&input.files[0];if(!file)return resolve('');if(!file.type.startsWith('image/'))return reject(Error('Нужен файл изображения'));if(file.size>1500000)return reject(Error('Изображение больше 1,5 МБ. Уменьши файл перед загрузкой.'));const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(Error('Не удалось прочитать изображение'));reader.readAsDataURL(file)})}
 function applyCatalogImage(mesh,data,color){if(!data){mesh.material.color.set(color);return}const img=new Image();img.onload=()=>{const tex=new THREE.Texture(img);tex.needsUpdate=true;tex.colorSpace=THREE.SRGBColorSpace;mesh.material.map=tex;mesh.material.color.set('#ffffff');mesh.material.roughness=.78;mesh.material.needsUpdate=true};img.onerror=()=>{mesh.material.color.set(color)};img.src=data}
