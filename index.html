@@ -254,7 +254,7 @@ function addFirmaxHinge(moduleId,sideX,frontZ,y,sideSign,frontMount=false){
 function addCabinetHinges(moduleId,w,h,d,bottomY){
  const left=parts.find(p=>p.userData.moduleId===moduleId&&p.userData.name==='Боковина левая'),right=parts.find(p=>p.userData.moduleId===moduleId&&p.userData.name==='Боковина правая');
  if(!left||!right)return;
- const orientation=left.userData.autoWallTurn||0,ys=[bottomY+110,bottomY+h-110];
+ const orientation=getModuleOrientation(moduleId),ys=[bottomY+110,bottomY+h-110];
  if(!orientation){
   if(w<=600){ys.forEach(y=>addFirmaxHinge(moduleId,left.position.x+8,left.position.z+d/2-2,y,1))}
   else{ys.forEach(y=>{addFirmaxHinge(moduleId,left.position.x+8,left.position.z+d/2-2,y,1);addFirmaxHinge(moduleId,right.position.x-8,right.position.z+d/2-2,y,-1)})}
@@ -362,6 +362,11 @@ function removeSelected(){if(!selected){$('hint').textContent='Сначала в
 function duplicateSelected(){if(!selected)return $('hint').textContent='Сначала выбери модуль или деталь';const source=individualMode?[selected]:parts.filter(p=>p.userData.moduleId===selectedModuleId),newModule=nextModuleId++;source.forEach(p=>{const u=p.userData,s=u.size;const clone=addPart(u.type,u.name+' — копия',s.w,s.h,s.d,p.position.x+100,p.position.y,p.position.z,u.material,u.thickness);clone.userData.moduleId=newModule});selectPart(parts.find(p=>p.userData.moduleId===newModule),individualMode);refreshList()}
 function applyProperties(){if(!selected)return;if(!individualMode){$('hint').textContent='Для редактирования одной детали удерживай Shift и щёлкни по ней.';return}const w=Math.max(1,+$('partW').value||1),h=Math.max(1,+$('partH').value||1),d=Math.max(1,+$('partD').value||1),p=selected.userData;p.name=$('partName').value.trim()||'Деталь';p.size={w:w,h:h,d:d};p.thickness=Math.max(1,+$('partT').value||18);p.material=$('partMat').value;selected.geometry.dispose();selected.geometry=p.shape==='cylinder'?new THREE.CylinderGeometry(Math.max(w,d)/2,Math.max(w,d)/2,h,24):new THREE.BoxGeometry(w,h,d);if(p.shape==='cylinder'){p.size.w=Math.max(w,d);p.size.d=Math.max(w,d);$('partW').value=p.size.w;$('partD').value=p.size.d}selected.material=makeMaterial(p.material);selected.position.set(+$('posX').value||0,Math.max(0,+$('posY').value||0),+$('posZ').value||0);$('hint').textContent='Размеры применены';selectPart(selected)}
 function stepSize(axis,delta){if(!selected)return;$('part'+axis).value=Math.max(1,(+$('part'+axis).value||1)+delta);applyProperties()}
+function getModuleOrientation(moduleId){
+ const group=parts.filter(p=>p.userData.moduleId===moduleId),left=group.find(p=>p.userData.name==='Боковина левая'),right=group.find(p=>p.userData.name==='Боковина правая');
+ if(left&&right){const dx=right.position.x-left.position.x,dz=right.position.z-left.position.z;if(Math.hypot(dx,dz)>1){const q=Math.round(Math.atan2(-dz,dx)/(Math.PI/2));return ((q%4)+4)%4;}}
+ return group[0]?.userData.autoWallTurn||0;
+}
 function syncModuleFacades(moduleId){
  const existing=parts.filter(p=>p.userData.moduleId===moduleId&&p.userData.type==='facade'&&!p.userData.drawerId);
  existing.forEach(p=>{model.remove(p);p.geometry.dispose();const i=parts.indexOf(p);if(i>=0)parts.splice(i,1)});
@@ -369,7 +374,7 @@ function syncModuleFacades(moduleId){
  if(!group.length)return;
  const left=group.find(p=>p.userData.name==='Боковина левая'),right=group.find(p=>p.userData.name==='Боковина правая');
  if(!left||!right)return;
- const orientation=group[0].userData.autoWallTurn||0;
+ const orientation=getModuleOrientation(moduleId);
  const mw=Math.round(group.find(p=>Number.isFinite(p.userData.moduleWidth))?.userData.moduleWidth??(Math.abs(right.position.x-left.position.x)+Math.abs(right.position.z-left.position.z)+(left.userData.size.w+right.userData.size.w)/2));
  const box=new THREE.Box3();group.forEach(p=>{p.updateMatrixWorld(true);box.expandByObject(p)});
  const size=box.getSize(new THREE.Vector3()),center=box.getCenter(new THREE.Vector3());
@@ -588,11 +593,7 @@ function autoTurnModuleToWall(members){
  const nearLeft=leftDistance>=-2&&leftDistance<190,nearBack=backDistance>=-2&&backDistance<190;
  if(!nearLeft&&!nearBack)return false;
  const wallSide=nearLeft&&(!nearBack||leftDistance<=backDistance)?'left':'back';
- const leftSide=members.find(p=>p.userData.name==='Боковина левая'),rightSide=members.find(p=>p.userData.name==='Боковина правая');
- // Флаг autoWallTurn мог устареть после ручного поворота. Считываем реальную ось ширины по боковинам.
- let current=members[0].userData.autoWallTurn||0;
- if(leftSide&&rightSide){const dx=rightSide.position.x-leftSide.position.x,dz=rightSide.position.z-leftSide.position.z;const quarter=Math.round(Math.atan2(-dz,dx)/(Math.PI/2));current=((quarter%4)+4)%4;}
- const desired=wallSide==='left'?1:0;
+ const current=members[0].userData.autoWallTurn||0,desired=wallSide==='left'?1:0;
  if(current===desired)return false;
  const center=box.getCenter(new THREE.Vector3()),angle=(desired-current)*Math.PI/2;
  const saved=members.map(p=>({p,pos:p.position.clone(),rot:p.rotation.clone(),quat:p.quaternion.clone(),closedRotation:p.userData.hingePivot?.closedRotation}));
@@ -638,7 +639,7 @@ if(!moved){const movedX=tryMove(nx-dragStart.x,0,0),movedY=tryMove(0,ny-dragStar
 if(moved){dragStart.set(drag.position.x,drag.position.y,drag.position.z);dragPointerWorldStart.copy(dragPointerWorldCurrent);dragFloorOffset=0;
 }
 if(selected){$('posX').value=Math.round(selected.position.x);$('posY').value=Math.round(selected.position.y);$('posZ').value=Math.round(selected.position.z)}updateHandles()});
-function stopDrag(e){if(resizeHandle){resizeHandle=null;resizeStart=null;controls.enabled=true;if(selected){selectPart(selected,true);refreshList()}return}if(!drag)return;const finishedMembers=dragMembers.slice();if(finishedMembers.length>1)autoTurnModuleToWall(finishedMembers);drag=null;dragMembers=[];dragObstacles=[];controls.enabled=true;if(selected)selectPart(selected,individualMode)}renderer.domElement.addEventListener('pointerup',stopDrag);renderer.domElement.addEventListener('pointercancel',stopDrag);
+function stopDrag(e){if(resizeHandle){resizeHandle=null;resizeStart=null;controls.enabled=true;if(selected){selectPart(selected,true);refreshList()}return}if(!drag)return;drag=null;dragMembers=[];dragObstacles=[];controls.enabled=true;if(selected)selectPart(selected,individualMode)}renderer.domElement.addEventListener('pointerup',stopDrag);renderer.domElement.addEventListener('pointercancel',stopDrag);
 window.addEventListener('keydown',e=>{if((e.key==='Delete'||e.key==='Backspace')&&!['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)){e.preventDefault();removeSelected()}if(e.key==='Shift')$('hint').textContent='Shift зажат: щёлкни по детали, чтобы выбрать её отдельно.'});
 function resize(){const w=stage.clientWidth,h=stage.clientHeight;if(!w||!h)return;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}new ResizeObserver(resize).observe(stage);window.addEventListener('resize',resize);function followDraggedCamera(){if(!drag||!dragMembers.length)return;camera.updateMatrixWorld(true);const box=new THREE.Box3();dragMembers.forEach(p=>{p.updateMatrixWorld(true);box.expandByObject(p)});const center=box.getCenter(new THREE.Vector3()),p=center.clone().project(camera),ex=Math.max(0,Math.abs(p.x)-.42),ey=Math.max(0,Math.abs(p.y)-.42);if(!ex&&!ey)return;const depth=camera.position.distanceTo(center),hh=depth*Math.tan(THREE.MathUtils.degToRad(camera.fov/2)),right=new THREE.Vector3(1,0,0).applyQuaternion(camera.quaternion).normalize(),up=new THREE.Vector3(0,1,0).applyQuaternion(camera.quaternion).normalize(),desired=right.multiplyScalar(THREE.MathUtils.clamp(p.x,-1.5,1.5)*ex*hh*(renderer.domElement.clientWidth/Math.max(1,renderer.domElement.clientHeight))*.55).add(up.multiplyScalar(THREE.MathUtils.clamp(p.y,-1.5,1.5)*ey*hh*.55)),shift=desired.multiplyScalar(.10);camera.position.add(shift);controls.target.add(shift);dragPlane.constant-=dragPlane.normal.dot(shift);dragPointerWorldStart.add(shift);dragPointerWorldCurrent.add(shift)}(function animate(){requestAnimationFrame(animate);updateCameraFocus();followDraggedCamera();controls.update();renderer.render(scene,camera)})();resize();$('status').textContent='● 3D ГОТОВ';refreshList();
 </script></body></html>
