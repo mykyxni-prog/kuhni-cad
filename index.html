@@ -329,14 +329,22 @@ function toggleSelectedFacade(){
  const moduleId=selected.userData.moduleId,doors=parts.filter(q=>q.userData.moduleId===moduleId&&q.userData.type==='facade'&&!q.userData.drawerId);
  if(!doors.length){ $('hint').textContent='У выбранного шкафа ещё нет фасадов.'; return; }
  if(doors.some(q=>q.userData.animating))return;
- const orientation=doors[0].userData.autoWallTurn||0,angle=orientation*Math.PI/2,axisX=Math.cos(angle),axisZ=-Math.sin(angle);
- const centerX=doors.reduce((v,q)=>v+q.position.x,0)/doors.length,centerZ=doors.reduce((v,q)=>v+q.position.z,0)/doors.length;
- doors.sort((a,b)=>((a.position.x-centerX)*axisX+(a.position.z-centerZ)*axisZ)-((b.position.x-centerX)*axisX+(b.position.z-centerZ)*axisZ));
+ // Берём реальное направление фасада из положения боковин: флаг стены может устареть после поворота шкафа.
+ const sides=parts.filter(q=>q.userData.moduleId===moduleId&&q.userData.name==='Боковина левая'||q.userData.moduleId===moduleId&&q.userData.name==='Боковина правая');
+ const left=sides.find(q=>q.userData.name==='Боковина левая'),right=sides.find(q=>q.userData.name==='Боковина правая');
+ const dx=left&&right?right.position.x-left.position.x:1,dz=left&&right?right.position.z-left.position.z:0;
+ const axisLength=Math.hypot(dx,dz)||1,axisX=dx/axisLength,axisZ=dz/axisLength;
+ const orientation=getModuleOrientation(moduleId),angle=Math.atan2(-axisZ,axisX);
+ const centerX=left&&right?(left.position.x+right.position.x)/2:doors.reduce((v,q)=>v+q.position.x,0)/doors.length;
+ const centerZ=left&&right?(left.position.z+right.position.z)/2:doors.reduce((v,q)=>v+q.position.z,0)/doors.length;
  const opening=(doors[0].userData.openProgress??(doors[0].userData.isOpen?1:0))<0.5,duration=500,started=performance.now();
- doors.forEach((mesh,index)=>{
+ doors.forEach(mesh=>{
   const u=mesh.userData;
   if(!u.hingePivot){
-   const side=Number.isFinite(u.cornerHingeSide)?u.cornerHingeSide:(doors.length===1?-1:(index===0?-1:1)),w=u.size.w;
+   // Левая створка навешивается на левый внешний край, правая — на правый.
+   // При открывании свободный край каждой створки уходит от корпуса, наружу.
+   const across=(mesh.position.x-centerX)*axisX+(mesh.position.z-centerZ)*axisZ;
+   const side=Number.isFinite(u.cornerHingeSide)?u.cornerHingeSide:(doors.length===1?-1:(across<0?-1:1)),w=u.size.w;
    u.hingePivot={side,closedRotation:mesh.rotation.y};
    const shift=new THREE.Vector3(side*w/2,0,0).applyAxisAngle(new THREE.Vector3(0,1,0),angle);
    mesh.geometry.translate(-side*w/2,0,0);mesh.position.add(shift);
@@ -353,7 +361,7 @@ function toggleSelectedFacade(){
   if(t<1){requestAnimationFrame(frame);return}
   doorStates.forEach(d=>{d.mesh.rotation.y=d.mesh.userData.hingePivot.closedRotation+d.side*Math.PI/2*d.to;d.mesh.userData.openProgress=d.to;d.mesh.userData.isOpen=d.to===1;d.mesh.userData.animating=false});
   hingeStates.forEach(h=>{if(h.link)h.link.rotation.y=-h.sideSign*Math.PI/2*h.to});
-  $('hint').textContent=opening?'Фасады открыты — можно закрыть кнопкой.':'Фасады закрыты.';updateHandles();refreshList();
+  $('hint').textContent=opening?'Фасады открыты наружу — можно закрыть кнопкой.':'Фасады закрыты.';updateHandles();refreshList();
  }
  requestAnimationFrame(frame);
 }
