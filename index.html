@@ -588,7 +588,11 @@ function autoTurnModuleToWall(members){
  const nearLeft=leftDistance>=-2&&leftDistance<190,nearBack=backDistance>=-2&&backDistance<190;
  if(!nearLeft&&!nearBack)return false;
  const wallSide=nearLeft&&(!nearBack||leftDistance<=backDistance)?'left':'back';
- const current=members[0].userData.autoWallTurn||0,desired=wallSide==='left'?1:0;
+ const leftSide=members.find(p=>p.userData.name==='Боковина левая'),rightSide=members.find(p=>p.userData.name==='Боковина правая');
+ // Флаг autoWallTurn мог устареть после ручного поворота. Считываем реальную ось ширины по боковинам.
+ let current=members[0].userData.autoWallTurn||0;
+ if(leftSide&&rightSide){const dx=rightSide.position.x-leftSide.position.x,dz=rightSide.position.z-leftSide.position.z;const quarter=Math.round(Math.atan2(-dz,dx)/(Math.PI/2));current=((quarter%4)+4)%4;}
+ const desired=wallSide==='left'?1:0;
  if(current===desired)return false;
  const center=box.getCenter(new THREE.Vector3()),angle=(desired-current)*Math.PI/2;
  const saved=members.map(p=>({p,pos:p.position.clone(),rot:p.rotation.clone(),quat:p.quaternion.clone(),closedRotation:p.userData.hingePivot?.closedRotation}));
@@ -634,7 +638,7 @@ if(!moved){const movedX=tryMove(nx-dragStart.x,0,0),movedY=tryMove(0,ny-dragStar
 if(moved){dragStart.set(drag.position.x,drag.position.y,drag.position.z);dragPointerWorldStart.copy(dragPointerWorldCurrent);dragFloorOffset=0;
 }
 if(selected){$('posX').value=Math.round(selected.position.x);$('posY').value=Math.round(selected.position.y);$('posZ').value=Math.round(selected.position.z)}updateHandles()});
-function stopDrag(e){if(resizeHandle){resizeHandle=null;resizeStart=null;controls.enabled=true;if(selected){selectPart(selected,true);refreshList()}return}if(!drag)return;drag=null;dragMembers=[];dragObstacles=[];controls.enabled=true;if(selected)selectPart(selected,individualMode)}renderer.domElement.addEventListener('pointerup',stopDrag);renderer.domElement.addEventListener('pointercancel',stopDrag);
+function stopDrag(e){if(resizeHandle){resizeHandle=null;resizeStart=null;controls.enabled=true;if(selected){selectPart(selected,true);refreshList()}return}if(!drag)return;const finishedMembers=dragMembers.slice();if(finishedMembers.length>1)autoTurnModuleToWall(finishedMembers);drag=null;dragMembers=[];dragObstacles=[];controls.enabled=true;if(selected)selectPart(selected,individualMode)}renderer.domElement.addEventListener('pointerup',stopDrag);renderer.domElement.addEventListener('pointercancel',stopDrag);
 window.addEventListener('keydown',e=>{if((e.key==='Delete'||e.key==='Backspace')&&!['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)){e.preventDefault();removeSelected()}if(e.key==='Shift')$('hint').textContent='Shift зажат: щёлкни по детали, чтобы выбрать её отдельно.'});
 function resize(){const w=stage.clientWidth,h=stage.clientHeight;if(!w||!h)return;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}new ResizeObserver(resize).observe(stage);window.addEventListener('resize',resize);function followDraggedCamera(){if(!drag||!dragMembers.length)return;camera.updateMatrixWorld(true);const box=new THREE.Box3();dragMembers.forEach(p=>{p.updateMatrixWorld(true);box.expandByObject(p)});const center=box.getCenter(new THREE.Vector3()),p=center.clone().project(camera),ex=Math.max(0,Math.abs(p.x)-.42),ey=Math.max(0,Math.abs(p.y)-.42);if(!ex&&!ey)return;const depth=camera.position.distanceTo(center),hh=depth*Math.tan(THREE.MathUtils.degToRad(camera.fov/2)),right=new THREE.Vector3(1,0,0).applyQuaternion(camera.quaternion).normalize(),up=new THREE.Vector3(0,1,0).applyQuaternion(camera.quaternion).normalize(),desired=right.multiplyScalar(THREE.MathUtils.clamp(p.x,-1.5,1.5)*ex*hh*(renderer.domElement.clientWidth/Math.max(1,renderer.domElement.clientHeight))*.55).add(up.multiplyScalar(THREE.MathUtils.clamp(p.y,-1.5,1.5)*ey*hh*.55)),shift=desired.multiplyScalar(.10);camera.position.add(shift);controls.target.add(shift);dragPlane.constant-=dragPlane.normal.dot(shift);dragPointerWorldStart.add(shift);dragPointerWorldCurrent.add(shift)}(function animate(){requestAnimationFrame(animate);updateCameraFocus();followDraggedCamera();controls.update();renderer.render(scene,camera)})();resize();$('status').textContent='● 3D ГОТОВ';refreshList();
 </script></body></html>
