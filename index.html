@@ -378,7 +378,12 @@ function addUpperCabinet(w=800,h=720,d=330){
  addPart('panel','Боковина правая',t,h,d,x+w/2-t/2,bottomY+h/2,z,'oak',t);
  addPart('panel','Верхняя панель',innerW,t,d,x,bottomY+h-t/2,z,'oak',t);
  addPart('panel','Нижняя панель',innerW,t,d,x,bottomY+t/2,z,'oak',t);
- addPart('shelf','Полка',innerW,t,d-5,x,bottomY+h/2,z,'oak',t);
+ if(h>720){
+  addPart('shelf','Полка 1',innerW,t,d-5,x,bottomY+h/3,z,'oak',t);
+  addPart('shelf','Полка 2',innerW,t,d-5,x,bottomY+h*2/3,z,'oak',t);
+ }else{
+  addPart('shelf','Полка',innerW,t,d-5,x,bottomY+h/2,z,'oak',t);
+ }
  // Задняя стенка ХДФ 3 мм утоплена в корпус под паз.
  addPart('back','Задняя стенка ХДФ 3 мм (в паз)',innerW,innerH,3,x,bottomY+h/2,-d/2+12,'milk',3);
  buildingModuleId=null;
@@ -571,6 +576,17 @@ function syncModuleFacades(moduleId){
   p.position.x=center.x+offset.x;p.position.z=center.z+offset.z;p.updateMatrixWorld(true);
  });
  const left=body.find(p=>p.userData.name==='Боковина левая'),bottomY=left?left.position.y-left.userData.size.h/2:0;
+ // В навесном шкафу выше 720 мм две равномерно расположенные полки; до 720 мм — одна по центру.
+ if(body.some(p=>p.userData.moduleKind==='upper')){
+  const shelves=body.filter(p=>p.userData.type==='shelf');
+  const desiredCount=target.y>720?2:1;
+  const template=shelves[0];
+  if(template){
+   while(shelves.length>desiredCount){const p=shelves.pop();model.remove(p);const idx=parts.indexOf(p);if(idx>=0)parts.splice(idx,1);if(p.geometry)p.geometry.dispose()}
+   while(shelves.length<desiredCount){const source=template,clone=source.clone();clone.geometry=new THREE.BoxGeometry(target.x-32,16,target.z-5);clone.userData={...source.userData,name:'Полка 2',size:{w:target.x-32,h:16,d:target.z-5},moduleWidth:target.x,moduleHeight:target.y,moduleDepth:target.z,moduleKind:'upper'};model.add(clone);parts.push(clone);shelves.push(clone)}
+   shelves.forEach((p,index)=>{const y=desiredCount===1?bottomY+target.y/2:bottomY+target.y*(index+1)/3;p.userData.name=desiredCount===1?'Полка':'Полка '+(index+1);p.userData.size={w:target.x-32,h:16,d:target.z-5};p.userData.moduleWidth=target.x;p.userData.moduleHeight=target.y;p.userData.moduleDepth=target.z;p.geometry.dispose();p.geometry=new THREE.BoxGeometry(target.x-32,16,target.z-5);p.position.y=y;p.updateMatrixWorld(true)})
+  }
+ }
  const newBottomY=center.y+(box.min.y-center.y)*worldScale.y;
  legs.forEach(p=>{p.position.x=center.x+(p.position.x-center.x)*worldScale.x;p.position.z=center.z+(p.position.z-center.z)*worldScale.z;p.position.y+=newBottomY-box.min.y;p.updateMatrixWorld(true)});
  addCabinetHinges(moduleId,target.x,target.y,target.z,bottomY);
