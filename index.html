@@ -496,14 +496,17 @@ function applyMilledWhiteFacade(){
   canvas.height=Math.max(2,Math.round(h*pixelsPerMm));
   const ctx=canvas.getContext('2d');
   ctx.fillStyle='#f7f7f4';ctx.fillRect(0,0,canvas.width,canvas.height);
-  const inset=Math.round(canvas.height*92/1024);
-  ctx.strokeStyle='#d2d2ce';ctx.lineWidth=Math.max(1,Math.round(canvas.height*13/1024));
+  // Keep the milling dimensions constant in millimetres on doors and drawer fronts.
+  // 700 mm is the reference door height used by the existing facade design.
+  const referenceHeight=700;
+  const inset=Math.round(referenceHeight*92/1024*pixelsPerMm);
+  ctx.strokeStyle='#d2d2ce';ctx.lineWidth=Math.max(1,Math.round(referenceHeight*13/1024*pixelsPerMm));
   ctx.strokeRect(inset,inset,canvas.width-inset*2,canvas.height-inset*2);
-  ctx.strokeStyle='#ffffff';ctx.lineWidth=Math.max(1,Math.round(canvas.height*5/1024));
-  const second=inset+Math.round(canvas.height*10/1024);
+  ctx.strokeStyle='#ffffff';ctx.lineWidth=Math.max(1,Math.round(referenceHeight*5/1024*pixelsPerMm));
+  const second=inset+Math.round(referenceHeight*10/1024*pixelsPerMm);
   ctx.strokeRect(second,second,canvas.width-second*2,canvas.height-second*2);
-  ctx.strokeStyle='#deded9';ctx.lineWidth=Math.max(1,Math.round(canvas.height*3/1024));
-  const third=inset+Math.round(canvas.height*30/1024);
+  ctx.strokeStyle='#deded9';ctx.lineWidth=Math.max(1,Math.round(referenceHeight*3/1024*pixelsPerMm));
+  const third=inset+Math.round(referenceHeight*30/1024*pixelsPerMm);
   ctx.strokeRect(third,third,canvas.width-third*2,canvas.height-third*2);
   const texture=new THREE.CanvasTexture(canvas);
   texture.colorSpace=THREE.SRGBColorSpace;
