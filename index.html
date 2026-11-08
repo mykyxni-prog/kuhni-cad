@@ -146,6 +146,57 @@ let cameraFocusAnimation=null;controls.addEventListener('start',()=>{cameraFocus
 function refreshList(){const iconFor=p=>({facade:'▧',panel:'▤',shelf:'▱',side:'▥',back:'▤',countertop:'▰',hinge:'⚙',handle:'⌁',leg:'●'})[p.userData.type]||'▦';$('objects').innerHTML=parts.length?parts.map(p=>'<div class="object '+(p===selected?'active':'')+'" data-id="'+p.userData.partId+'"><span style="display:flex;align-items:center;gap:9px;min-width:0"><span style="width:42px;height:42px;flex:none;border-radius:6px;background:linear-gradient(145deg,#59645b,#252a28);display:grid;place-items:center;font-size:23px;color:#d9e8cf;border:1px solid #657260">'+iconFor(p)+'</span><span style="min-width:0"><span class="name">'+p.userData.name+'</span><br><small>Модуль '+p.userData.moduleId+' · '+Math.round(p.userData.size.w)+' × '+Math.round(p.userData.size.h)+' × '+Math.round(p.userData.size.d)+' мм</small></span></span><span>›</span></div>').join(''):'Пока нет деталей. Добавь первую слева.';document.querySelectorAll('[data-id]').forEach(el=>el.onclick=()=>{const p=parts.find(q=>q.userData.partId===+el.dataset.id);if(p)selectPart(p,true)})}
 function addByType(type){if(type==='facade'){if(selected&&!individualMode){const moduleId=selected.userData.moduleId,existing=parts.some(p=>p.userData.moduleId===moduleId&&p.userData.type==='facade');if(existing){$('hint').textContent='Фасады этого модуля уже добавлены.';return}syncModuleFacades(moduleId);selectPart(parts.find(p=>p.userData.moduleId===moduleId&&p.userData.type!=='facade'),false);const facades=parts.filter(p=>p.userData.moduleId===moduleId&&p.userData.type==='facade');$('hint').textContent='Добавлено фасадов: '+facades.length+'. Размер: '+facades.map(p=>Math.round(p.userData.size.w)+' × '+Math.round(p.userData.size.h)).join('; ')+' мм';return}return addPart('facade','Фасад',597,717,16,700,900,9,'milk',16)}if(type==='panel')return addPart('panel','Панель ЛДСП',600,720,18,0,900,0,'oak',18);if(type==='shelf'){if(selected){const moduleId=selected.userData.moduleId,group=parts.filter(p=>p.userData.moduleId===moduleId),sides=group.filter(p=>p.userData.type==='panel'&&(p.userData.name==='Боковина левая'||p.userData.name==='Боковина правая'));if(sides.length===2){const left=sides[0],right=sides[1],w=Math.max(16,Math.abs(right.position.x-left.position.x)-left.userData.size.w),d=Math.max(16,left.userData.size.d-5),bottom=group.find(p=>p.userData.name==='Дно накладное'),topY=Math.max(...sides.map(p=>p.position.y+p.userData.size.h/2)),lowY=bottom?bottom.position.y+bottom.userData.size.h/2+9:Math.min(...sides.map(p=>p.position.y-p.userData.size.h/2))+25;let shelves=group.filter(p=>p.userData.type==='shelf');const shelf=addPart('shelf','Полка',w,16,d,(left.position.x+right.position.x)/2,0,left.position.z,'oak',16);shelf.userData.moduleId=moduleId;shelves.push(shelf);const step=(topY-16-lowY)/(shelves.length+1);shelves.forEach((p,i)=>{p.userData.size.w=w;p.userData.size.h=16;p.userData.size.d=d;p.geometry.dispose();p.geometry=new THREE.BoxGeometry(w,16,d);p.position.set((left.position.x+right.position.x)/2,lowY+step*(i+1),left.position.z);p.updateMatrixWorld(true)});selectPart(shelf,true);$('hint').textContent='Полка добавлена внутрь шкафа. Полки равномерно распределены по высоте.';return}}return addPart('shelf','Полка',600,16,500,0,900,0,'oak',16)}if(type==='side')return addPart('side','Боковина',600,720,18,0,360,0,'oak',18);if(type==='back')return addPart('back','Задняя стенка',600,720,3,0,900,-300,'milk',3);return addPart('panel','Деталь',500,500,18,0,250,0,'oak',18)}
 function addRoundPart(name,diameter,height,x,y,z,material='graphite'){const geo=new THREE.CylinderGeometry(diameter/2,diameter/2,height,24);const mesh=new THREE.Mesh(geo,makeMaterial(material));mesh.position.set(x,y,z);const moduleId=buildingModuleId??nextModuleId++;mesh.userData={partId:nextId++,moduleId,type:'leg',shape:'cylinder',name,size:{w:diameter,h:height,d:diameter},material,thickness:diameter};model.add(mesh);parts.push(mesh);return mesh}
+function addCooktopVisual(countertop,x,z){
+ const group=new THREE.Group();group.position.set(x,0,z);
+ const glass=new THREE.Mesh(new THREE.BoxGeometry(580,8,500),new THREE.MeshStandardMaterial({color:0x111315,metalness:.38,roughness:.2}));
+ glass.position.y=41;group.add(glass);
+ const edgeMat=new THREE.MeshStandardMaterial({color:0x55595c,metalness:.82,roughness:.24});
+ const ringMat=new THREE.MeshStandardMaterial({color:0x9a9da0,metalness:.9,roughness:.22});
+ const burnerMat=new THREE.MeshStandardMaterial({color:0x080909,metalness:.35,roughness:.28});
+ for(const bx of [-135,135])for(const bz of [-115,115]){
+  const radius=(bx===-135&&bz===-115)?57:48;
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(radius,2.4,10,48),ringMat);ring.rotation.x=Math.PI/2;ring.position.set(bx,46.2,bz);group.add(ring);
+  const inner=new THREE.Mesh(new THREE.TorusGeometry(radius*.72,1.6,8,40),edgeMat);inner.rotation.x=Math.PI/2;inner.position.set(bx,46.1,bz);group.add(inner);
+  const cap=new THREE.Mesh(new THREE.CylinderGeometry(radius*.34,radius*.34,2.2,32),burnerMat);cap.position.set(bx,45.5,bz);group.add(cap);
+  const center=new THREE.Mesh(new THREE.CylinderGeometry(5,5,1.5,20),edgeMat);center.position.set(bx,47,bz);group.add(center);
+ }
+ // Сенсорная панель управления — четыре лаконичных индикатора у переднего края.
+ for(let i=0;i<4;i++){
+  const dot=new THREE.Mesh(new THREE.CircleGeometry(3.2,16),new THREE.MeshBasicMaterial({color:i===0?0x48b8a0:0x777d80}));
+  dot.rotation.x=-Math.PI/2;dot.position.set(205+i*17,45.2,205);group.add(dot);
+ }
+ countertop.add(group);
+}
+function addSinkVisual(countertop,x,z){
+ const group=new THREE.Group();group.position.set(x,0,z);
+ const steel=new THREE.MeshStandardMaterial({color:0xb9bec1,metalness:.88,roughness:.24});
+ const innerSteel=new THREE.MeshStandardMaterial({color:0x777f83,metalness:.82,roughness:.3,side:THREE.DoubleSide});
+ const dark=new THREE.MeshStandardMaterial({color:0x242a2d,metalness:.25,roughness:.22});
+ // Четыре части бортика, чтобы в центре оставалась открытая чаша.
+ const rimParts=[
+  [580,5,30,0,39,-235],[580,5,30,0,39,235],
+  [30,5,440,-275,39,0],[30,5,440,275,39,0]
+ ];
+ rimParts.forEach(([w,h,d,px,py,pz])=>{const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),steel);m.position.set(px,py,pz);group.add(m)});
+ const quad=(points,mat)=>{const geo=new THREE.BufferGeometry();geo.setFromPoints(points.map(p=>new THREE.Vector3(...p)));geo.setIndex([0,1,2,0,2,3]);geo.computeVertexNormals();const m=new THREE.Mesh(geo,mat);group.add(m)};
+ // Наклонные стенки чаши и её дно находятся ниже уровня столешницы.
+ quad([[-260,36, -220],[260,36,-220],[210,-100,-170],[-210,-100,-170]],innerSteel);
+ quad([[-260,36,220],[-210,-100,170],[210,-100,170],[260,36,220]],innerSteel);
+ quad([[-260,36,-220],[-260,36,220],[-210,-100,170],[-210,-100,-170]],innerSteel);
+ quad([[260,36,-220],[210,-100,-170],[210,-100,170],[260,36,220]],innerSteel);
+ const basin=new THREE.Mesh(new THREE.BoxGeometry(420,4,340),dark);basin.position.set(0,-99,0);group.add(basin);
+ // Донный слив с металлическим кольцом.
+ const drain=new THREE.Mesh(new THREE.CylinderGeometry(34,34,2,40),steel);drain.position.set(0,-95,65);group.add(drain);
+ const drainHole=new THREE.Mesh(new THREE.CylinderGeometry(22,22,2.5,32),dark);drainHole.position.set(0,-93.5,65);group.add(drainHole);
+ // Смеситель: основание, стойка, дугообразный излив и небольшой рычаг.
+ const base=new THREE.Mesh(new THREE.CylinderGeometry(24,27,7,32),steel);base.position.set(0,43,-252);group.add(base);
+ const stem=new THREE.Mesh(new THREE.CylinderGeometry(10,12,142,24),steel);stem.position.set(0,116,-252);group.add(stem);
+ const curve=new THREE.CatmullRomCurve3([new THREE.Vector3(0,184,-252),new THREE.Vector3(0,218,-242),new THREE.Vector3(0,222,-195),new THREE.Vector3(0,198,-150)]);
+ const spout=new THREE.Mesh(new THREE.TubeGeometry(curve,32,8,12,false),steel);group.add(spout);
+ const aerator=new THREE.Mesh(new THREE.CylinderGeometry(9,9,12,20),innerSteel);aerator.position.set(0,194,-150);group.add(aerator);
+ const lever=new THREE.Mesh(new THREE.BoxGeometry(7,48,7),steel);lever.position.set(24,169,-252);lever.rotation.z=-.22;group.add(lever);
+ countertop.add(group);
+}
 function getNextModuleX(width){let maxX=-Infinity;const ids=new Set(parts.filter(p=>p.userData.type!=='countertop').map(p=>p.userData.moduleId).filter(v=>v!=null));for(const id of ids){const group=parts.filter(p=>p.userData.moduleId===id);const b=new THREE.Box3();group.forEach(p=>b.expandByObject(p));if(!b.isEmpty())maxX=Math.max(maxX,b.max.x)}return Number.isFinite(maxX)?maxX+width/2:roomLeft+width/2}
 function addCountertopWithCutouts(){
  const old=parts.filter(p=>p.userData.type==='countertop');
@@ -206,6 +257,7 @@ function addCountertopWithCutouts(){
   mesh.add(frontRoll);
   mesh.position.set(0,topY,0);
   mesh.rotation.y=-Math.atan2(row.u.z,row.u.x);
+  cutouts.forEach(m=>{if(m.cooktop)addCooktopVisual(mesh,m.along,m.across);else if(m.sink)addSinkVisual(mesh,m.along,m.across)});
   mesh.userData={partId:nextId++,moduleId:nextModuleId++,type:'countertop',name:'Столешница — ряд '+(made.length+1),size:{w:maxU-minU,h:38,d:countertopDepth},material:'stone',thickness:38,cutouts:cutouts.map(m=>({moduleId:m.id,width:560,depth:480}))};
   model.add(mesh);parts.push(mesh);made.push(mesh);
  }
