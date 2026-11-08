@@ -197,7 +197,23 @@ function addSinkVisual(countertop,x,z){
  const lever=new THREE.Mesh(new THREE.BoxGeometry(7,48,7),steel);lever.position.set(24,169,-252);lever.rotation.z=-.22;group.add(lever);
  countertop.add(group);
 }
-function getNextModuleX(width){let maxX=-Infinity;const ids=new Set(parts.filter(p=>p.userData.type!=='countertop'&&p.userData.moduleKind!=='upper').map(p=>p.userData.moduleId).filter(v=>v!=null));for(const id of ids){const group=parts.filter(p=>p.userData.moduleId===id);const b=new THREE.Box3();group.forEach(p=>b.expandByObject(p));if(!b.isEmpty())maxX=Math.max(maxX,b.max.x)}return Number.isFinite(maxX)?maxX+width/2:roomLeft+width/2}
+function getNextModuleX(width){
+ // Считаем положение только по корпусам нижнего ряда, не по фурнитуре,
+ // фасадам, столешницам и отдельным вспомогательным деталям.
+ let maxX=-Infinity;
+ const ids=new Set(parts.filter(p=>p.userData.moduleId!=null&&p.userData.type!=='countertop'&&p.userData.moduleKind!=='upper').map(p=>p.userData.moduleId));
+ for(const id of ids){
+  const group=parts.filter(p=>p.userData.moduleId===id);
+  const left=group.find(p=>p.userData.name==='Боковина левая'),right=group.find(p=>p.userData.name==='Боковина правая');
+  if(!left||!right)continue;
+  // Для стандартного нижнего ряда боковины идут вдоль оси X.
+  if(Math.abs(right.position.z-left.position.z)>Math.abs(right.position.x-left.position.x))continue;
+  const edge=Math.max(left.position.x+left.userData.size.w/2,right.position.x+right.userData.size.w/2);
+  if(Number.isFinite(edge))maxX=Math.max(maxX,edge);
+ }
+ // Первый нижний шкаф начинается точно от левой стены комнаты.
+ return Number.isFinite(maxX)?maxX+width/2:roomLeft+width/2;
+}
 function shiftKitchenRowAfterResize(moduleId,oldCenter,axis,oldWidth,newWidth){
  const delta=newWidth-oldWidth;
  if(Math.abs(delta)<0.5)return;
