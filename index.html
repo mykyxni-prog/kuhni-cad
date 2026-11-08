@@ -486,21 +486,35 @@ function applyMilledWhiteFacade(){
  if(!selected){$('hint').textContent='Сначала выбери модуль или его фасад.';return}
  const id=selected.userData.moduleId,facades=parts.filter(p=>p.userData.moduleId===id&&p.userData.type==='facade');
  if(!facades.length){$('hint').textContent='У выбранного модуля пока нет фасадов. Добавь фасад.';return}
- const canvas=document.createElement('canvas');canvas.width=1024;canvas.height=1024;
- const ctx=canvas.getContext('2d');ctx.fillStyle='#f7f7f4';ctx.fillRect(0,0,1024,1024);
- const inset=92;
- ctx.strokeStyle='#d2d2ce';ctx.lineWidth=13;ctx.strokeRect(inset,inset,1024-inset*2,1024-inset*2);
- ctx.strokeStyle='#ffffff';ctx.lineWidth=5;ctx.strokeRect(inset+10,inset+10,1024-(inset+10)*2,1024-(inset+10)*2);
- ctx.strokeStyle='#deded9';ctx.lineWidth=3;ctx.strokeRect(inset+30,inset+30,1024-(inset+30)*2,1024-(inset+30)*2);
- const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;texture.anisotropy=renderer.capabilities.getMaxAnisotropy();
  facades.forEach(p=>{
+  const w=Math.max(1,p.userData.size?.w||600),h=Math.max(1,p.userData.size?.h||700);
+  // Match the texture aspect ratio to the real facade so one pixel represents
+  // the same physical distance horizontally and vertically. This keeps the
+  // routed border equally wide on all four sides instead of stretching a square map.
+  const pixelsPerMm=2,canvas=document.createElement('canvas');
+  canvas.width=Math.max(2,Math.round(w*pixelsPerMm));
+  canvas.height=Math.max(2,Math.round(h*pixelsPerMm));
+  const ctx=canvas.getContext('2d');
+  ctx.fillStyle='#f7f7f4';ctx.fillRect(0,0,canvas.width,canvas.height);
+  const inset=Math.round(canvas.height*92/1024);
+  ctx.strokeStyle='#d2d2ce';ctx.lineWidth=Math.max(1,Math.round(canvas.height*13/1024));
+  ctx.strokeRect(inset,inset,canvas.width-inset*2,canvas.height-inset*2);
+  ctx.strokeStyle='#ffffff';ctx.lineWidth=Math.max(1,Math.round(canvas.height*5/1024));
+  const second=inset+Math.round(canvas.height*10/1024);
+  ctx.strokeRect(second,second,canvas.width-second*2,canvas.height-second*2);
+  ctx.strokeStyle='#deded9';ctx.lineWidth=Math.max(1,Math.round(canvas.height*3/1024));
+  const third=inset+Math.round(canvas.height*30/1024);
+  ctx.strokeRect(third,third,canvas.width-third*2,canvas.height-third*2);
+  const texture=new THREE.CanvasTexture(canvas);
+  texture.colorSpace=THREE.SRGBColorSpace;
+  texture.anisotropy=renderer.capabilities.getMaxAnisotropy();
   if(Array.isArray(p.material))p.material.forEach(m=>m?.dispose());else p.material?.dispose();
   const side=new THREE.MeshStandardMaterial({color:'#f7f7f4',roughness:.72});
   const front=new THREE.MeshStandardMaterial({color:'#ffffff',map:texture,roughness:.72});
   p.material=[side,side,side,side,front,side];
   p.userData.customColor='#f7f7f4';p.userData.facadeName='Фрезерованный фасад белый';p.userData.facadeStyle='milled-white';
  });
- refreshList();$('hint').textContent='Фрезерованный белый фасад применён. Зазоры: 3 мм по периметру; на широких модулях — 4 мм между фасадами.';
+ refreshList();$('hint').textContent='Фрезеровка выровнена: одинаковая ширина по всему периметру каждого фасада.';
 }
 document.querySelectorAll('[data-facade]').forEach(b=>b.onclick=()=>b.dataset.facade==='milled-white'?applyMilledWhiteFacade():applyFacadeColor(({milk:'#e5dfd1',graphite:'#3b403e',green:'#53684c',oak:'#b79a70',stone:'#aaa99f'})[b.dataset.facade],b.textContent));
 document.querySelectorAll('[data-material]').forEach(b=>b.onclick=()=>{if(!selected){$('hint').textContent='Сначала выбери деталь.';return}const key=b.dataset.material;selected.userData.material=key;selected.material=makeMaterial(key);$('partMat').value=key;selectPart(selected,true)});
