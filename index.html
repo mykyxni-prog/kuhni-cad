@@ -732,6 +732,25 @@ function autoTurnModuleToWall(members){
  const wallSide=nearLeft&&(!nearBack||leftDistance<=backDistance)?'left':'back';
  const current=members[0].userData.autoWallTurn||0,desired=wallSide==='left'?1:0;
  if(current===desired)return false;
+ // Перед поворотом возвращаем каждый фасад в закрытое нейтральное положение.
+ // Иначе ранее открытая дверца сохраняет старую ось петли и после разворота
+ // может распахиваться в обратную сторону.
+ members.forEach(p=>{
+  const pivot=p.userData?.hingePivot;
+  if(p.userData?.type==='facade'&&pivot){
+   const side=Number.isFinite(pivot.side)?pivot.side:-1,w=p.userData.size?.w||0;
+   const closed=Array.isArray(pivot.closedRotation)?(pivot.closedRotation[1]||0):(+pivot.closedRotation||0);
+   p.rotation.y=closed;
+   p.position.sub(new THREE.Vector3(side*w/2,0,0).applyAxisAngle(new THREE.Vector3(0,1,0),closed));
+   p.geometry.translate(side*w/2,0,0);
+   delete p.userData.hingePivot;
+   p.userData.openProgress=0;p.userData.isOpen=false;p.userData.animating=false;
+   p.updateMatrixWorld(true);
+  }
+  if(p.userData?.hingeAssembly&&p.userData.movingLink){
+   p.userData.movingLink.rotation.y=0;p.userData.hingeProgress=0;
+  }
+ });
  const center=box.getCenter(new THREE.Vector3()),angle=(desired-current)*Math.PI/2;
  const saved=members.map(p=>({p,pos:p.position.clone(),rot:p.rotation.clone(),quat:p.quaternion.clone(),closedRotation:p.userData.hingePivot?.closedRotation}));
  members.forEach(p=>{
