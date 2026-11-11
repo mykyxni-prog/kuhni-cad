@@ -380,58 +380,38 @@ function addCabinetHinges(moduleId,w,h,d,bottomY){
 }
 function addCabinet(w=800,h=720,d=520,doors=false,withLegs=false,withShelf=true,kind='standard'){captureUndoSnapshot();const t=16,legsH=withLegs?100:0,sideH=h-t,nextX=getNextModuleX(w);buildingModuleId=nextModuleId++;const x=0,z=0,bottomY=legsH,sideY=bottomY+t+sideH/2,topY=bottomY+h,innerW=w-2*t;addPart('panel','Боковина левая',t,sideH,d,x-w/2+t/2,sideY,z,'oak',t);addPart('panel','Боковина правая',t,sideH,d,x+w/2-t/2,sideY,z,'oak',t);addPart('panel','Дно накладное',w,t,d,x,bottomY+t/2,z,'oak',t);if(withShelf)addPart('shelf','Полка',innerW,t,d-5,x,bottomY+t+sideH/2,z,'oak',t);if(kind==='oven'){const drawerFrontH=h-600-3,dividerTopY=topY-600;addPart('shelf','Полка под духовку',innerW,t,d,x,dividerTopY-t/2,z,'oak',t);addPart('panel','Фасад ящика',w-3,drawerFrontH,16,x,bottomY+drawerFrontH/2,d/2+8,'milk',16);const boxW=innerW-24,boxD=Math.min(450,d-70),boxH=70,boxZ=d/2-16-boxD/2,boxY=bottomY+16+boxH/2;addPart('panel','Боковина ящика левая',12,boxH,boxD,x-boxW/2+6,boxY,boxZ,'oak',12);addPart('panel','Боковина ящика правая',12,boxH,boxD,x+boxW/2-6,boxY,boxZ,'oak',12);addPart('panel','Задняя стенка ящика',boxW-24,boxH,12,x,boxY,boxZ-boxD/2+6,'oak',12);addPart('panel','Дно ящика',boxW-24,12,boxD,x,bottomY+16+6,boxZ,'oak',12)}else if(kind==='sink'){const railHeight=80;addPart('panel','Переднее вертикальное усиление',innerW,railHeight,t,x,topY-railHeight/2,d/2-t/2,'oak',t)}else{const railH=t,railD=100;addPart('panel','Верхнее усиление переднее',innerW,railH,railD,x,topY-railH/2,d/2-railD/2,'oak',t);addPart('panel','Верхнее усиление заднее',innerW,railH,railD,x,topY-railH/2,-d/2+railD/2,'oak',t);addPart('back','Задняя стенка',w-3,h-3,4,x,bottomY+(h-3)/2,-d/2+2,'milk',4)}if(withLegs){for(const lx of [-w/2+55,w/2-55])for(const lz of [-d/2+55,d/2-55]){addRoundPart('Опора Volpato 31 — основание',48,10,lx,5,lz,'graphite');addRoundPart('Опора Volpato 31 — стойка',28,82,lx,51,lz,'graphite');addPart('leg','Опора Volpato 31 — верхнее крепление',46,8,46,lx,96,lz,'graphite',8)}}const id=buildingModuleId;buildingModuleId=null;const last=parts.filter(p=>p.userData.moduleId===id);if(last.length){const wallOffset=-3500+d/2+10;last.forEach(p=>{p.position.x+=nextX;p.position.z+=wallOffset;p.updateMatrixWorld(true)});const bounds=new THREE.Box3();last.forEach(p=>bounds.expandByObject(p));last.forEach(p=>{p.userData.moduleWidth=w;p.userData.moduleHeight=h;p.userData.moduleDepth=d});addCabinetHinges(id,w,h,d,bottomY);if(doors)syncModuleFacades(id);const center=bounds.getCenter(new THREE.Vector3());const viewOffset=camera.position.clone().sub(controls.target).normalize().multiplyScalar(2600);controls.target.copy(center);camera.position.copy(center).add(viewOffset);controls.update();selectPart(last[0],false)}}
 function addDishwasher(){
- captureUndoSnapshot();
- const w=600,h=720,d=560,t=16,legsH=100,bottomY=legsH,nextX=getNextModuleX(w);
- buildingModuleId=nextModuleId++;
- const id=buildingModuleId,x=0,z=0,innerW=w-2*t,centerZ=-3500+d/2+10,frontZ=centerZ+d/2+9;
- // Корпус ниши: стандартная ширина 600 мм, высота 720 мм, глубина 560 мм.
- addPart('panel','Боковина левая',t,h,d,x-w/2+t/2,bottomY+h/2,z,'oak',t);
- addPart('panel','Боковина правая',t,h,d,x+w/2-t/2,bottomY+h/2,z,'oak',t);
- addPart('panel','Дно ниши посудомойки',innerW,t,d,x,bottomY+t/2,z,'oak',t);
- addPart('panel','Верхнее усиление ниши',innerW,80,t,x,bottomY+h-40,d/2-t/2,'oak',t);
- // Четыре опоры дают ту же общую высоту 820 мм, что и у соседних нижних шкафов.
- for(const lx of [-w/2+55,w/2-55])for(const lz of [-d/2+55,d/2-55]){
-  addRoundPart('Опора Volpato 31 — основание',48,10,lx,5,lz,'graphite');
-  addRoundPart('Опора Volpato 31 — стойка',28,82,lx,51,lz,'graphite');
-  addPart('leg','Опора Volpato 31 — верхнее крепление',46,8,46,lx,96,lz,'graphite',8);
- }
- // Корпус техники внутри ниши; фасад остаётся мебельным, а не отдельной бытовой дверцей.
- const appliance=addPart('appliance','Корпус встроенной посудомойки',innerW-18,h-30,d-70,x,bottomY+h/2,z,'graphite',2);
- appliance.material=new THREE.MeshStandardMaterial({color:'#303638',roughness:.62,metalness:.18});
- const tub=addPart('appliance','Внутренняя камера посудомойки',innerW-48,h-115,18,x,bottomY+h/2,z+d/2-34,'graphite',2);
- tub.material=new THREE.MeshStandardMaterial({color:'#171d20',roughness:.8,metalness:.08});
- // Внутренние полки-корзины и направляющие видны, когда фасад опущен.
- for(const yy of [bottomY+245,bottomY+455]){
-  for(const zz of [z+d/2-78,z+d/2-150]){
-   const rail=addPart('appliance','Направляющая корзины посудомойки',innerW-92,5,5,x,yy,zz,'graphite',2);
-   rail.material=new THREE.MeshStandardMaterial({color:'#aeb7b8',metalness:.72,roughness:.32});
+  captureUndoSnapshot();
+  const w=600,h=820,d=560,bottomY=0,nextX=getNextModuleX(w);
+  buildingModuleId=nextModuleId++;
+  const id=buildingModuleId,x=0,z=0,innerW=w-32,centerZ=-3500+d/2+10,frontZ=centerZ+d/2+9;
+  // Отдельностоящая посудомойка: собственный корпус техники стоит непосредственно на полу.
+  const appliance=addPart('appliance','Корпус отдельностоящей посудомойки',w-4,h-4,d-4,x,bottomY+h/2,z,'graphite',2);
+  appliance.material=new THREE.MeshStandardMaterial({color:'#303638',roughness:.62,metalness:.18});
+  // Внутренняя камера и корзины открываются вместе с фасадом.
+  const tub=addPart('appliance','Внутренняя камера посудомойки',innerW-38,h-105,18,x,bottomY+h/2,z+d/2-28,'graphite',2);
+  tub.material=new THREE.MeshStandardMaterial({color:'#171d20',roughness:.8,metalness:.08});
+  for(const yy of [bottomY+245,bottomY+505]){
+   for(const zz of [z+d/2-72,z+d/2-145]){
+    const rail=addPart('appliance','Направляющая корзины посудомойки',innerW-92,5,5,x,yy,zz,'graphite',2);
+    rail.material=new THREE.MeshStandardMaterial({color:'#aeb7b8',metalness:.72,roughness:.32});
+   }
   }
- }
- for(let n=0;n<7;n++){
-  const wire=addPart('appliance','Проволока корзины посудомойки',5,4,innerW-110,x-((innerW-110)/2)+n*70,bottomY+260,z+d/2-112,'graphite',2);
-  wire.material=new THREE.MeshStandardMaterial({color:'#aeb7b8',metalness:.72,roughness:.32});
- }
- // Фасад 597 x 717 мм: зазор 3 мм по габариту, открывается вниз на нижней горизонтальной оси.
- const door=addPart('facade','Фасад посудомойки',w-3,h-3,18,x,bottomY+(h-3)/2,frontZ,'milk',18);
- door.userData.dishwasherDoor=true;
- const control=addPart('applianceDoor','Панель управления посудомойки',w-35,42,5,x,bottomY+h-29,frontZ+12,'graphite',3);
- const handle=addPart('applianceDoor','Ручка посудомойки',190,10,9,x,bottomY+h-88,frontZ+15,'graphite',4);
- const display=addPart('applianceDoor','Дисплей посудомойки',48,13,2,x+105,bottomY+h-29,frontZ+16,'green',2);
- [control,handle,display].forEach(p=>{p.userData.dishwasherDoor=true;p.userData.dishwasherDoorPart=true});
- // Маленькие кнопки на панели управления.
- for(let n=0;n<3;n++){
-  const button=addPart('applianceDoor','Кнопка управления посудомойки',8,8,2,x-105+n*22,bottomY+h-29,frontZ+16,'milk',2);
-  button.userData.dishwasherDoor=true;button.userData.dishwasherDoorPart=true;
- }
- buildingModuleId=null;
- const group=parts.filter(p=>p.userData.moduleId===id);
- group.forEach(p=>{p.position.x+=nextX;p.position.z+=centerZ;p.userData.moduleWidth=w;p.userData.moduleHeight=h;p.userData.moduleDepth=d;p.userData.moduleKind='dishwasher';p.userData.dishwasherModule=true;p.updateMatrixWorld(true)});
- const doors=group.filter(p=>p.userData.dishwasherDoor);
- doors.forEach(p=>{p.userData.dishwasherBasePosition=p.position.toArray();p.userData.dishwasherBaseRotation=p.rotation.toArray()});
- const bounds=new THREE.Box3();group.forEach(p=>bounds.expandByObject(p));
- const center=bounds.getCenter(new THREE.Vector3()),viewOffset=camera.position.clone().sub(controls.target).normalize().multiplyScalar(2600);
- controls.target.copy(center);camera.position.copy(center).add(viewOffset);controls.update();
- selectPart(door,false);$('hint').textContent='Добавлена встроенная посудомойка 600 мм. Выбери модуль и нажми «Открыть / закрыть посудомойку».';
+  for(let n=0;n<7;n++){
+   const wire=addPart('appliance','Проволока корзины посудомойки',5,4,innerW-110,x-((innerW-110)/2)+n*70,bottomY+260,z+d/2-108,'graphite',2);
+   wire.material=new THREE.MeshStandardMaterial({color:'#aeb7b8',metalness:.72,roughness:.32});
+  }
+  // Обычный гладкий мебельный фасад без ручки, панели управления и выступающих деталей.
+  const door=addPart('facade','Обычный фасад посудомойки',w-3,h-3,18,x,bottomY+(h-3)/2,frontZ,'milk',18);
+  door.userData.dishwasherDoor=true;
+  buildingModuleId=null;
+  const group=parts.filter(p=>p.userData.moduleId===id);
+  group.forEach(p=>{p.position.x+=nextX;p.position.z+=centerZ;p.userData.moduleWidth=w;p.userData.moduleHeight=h;p.userData.moduleDepth=d;p.userData.moduleKind='dishwasher';p.userData.dishwasherModule=true;p.updateMatrixWorld(true)});
+  const doors=group.filter(p=>p.userData.dishwasherDoor);
+  doors.forEach(p=>{p.userData.dishwasherBasePosition=p.position.toArray();p.userData.dishwasherBaseRotation=p.rotation.toArray()});
+  const bounds=new THREE.Box3();group.forEach(p=>bounds.expandByObject(p));
+  const center=bounds.getCenter(new THREE.Vector3()),viewOffset=camera.position.clone().sub(controls.target).normalize().multiplyScalar(2600);
+  controls.target.copy(center);camera.position.copy(center).add(viewOffset);controls.update();
+  selectPart(door,false);$('hint').textContent='Добавлена отдельностоящая посудомойка 600 мм: корпус стоит на полу, спереди установлен гладкий фасад без ручки.';
 }
 function toggleDishwasherDoor(){
  if(!selected||!parts.some(p=>p.userData.moduleId===selected.userData.moduleId&&p.userData.dishwasherModule)){ $('hint').textContent='Выбери встроенную посудомойку целиком.';return}
@@ -610,7 +590,7 @@ function syncModuleFacades(moduleId){
    if(cornerHinge)mesh.userData.cornerHingeSide=cornerHinge.userData.sideSign===1?1:-1;
   }
  }finally{buildingModuleId=previousBuildingModuleId}
-}function applyModuleDimensions(){if(selected&&parts.some(p=>p.userData.moduleId===selected.userData.moduleId&&p.userData.dishwasherModule)){$('hint').textContent='Для посудомойки оставлены стандартные габариты ниши 600 × 720 × 560 мм, чтобы техника и фасад точно помещались внутри.';return}
+}function applyModuleDimensions(){if(selected&&parts.some(p=>p.userData.moduleId===selected.userData.moduleId&&p.userData.dishwasherModule)){$('hint').textContent='Для отдельностоящей посудомойки оставлены стандартные габариты 600 × 820 × 560 мм.';return}
  if(!selected||individualMode)return;
  const moduleId=selected.userData.moduleId;
  const drawerGroup=parts.filter(p=>p.userData.moduleId===moduleId);
