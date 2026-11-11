@@ -549,7 +549,7 @@ function addDrawerCabinet(variant){
 }
 function toggleSelectedFacade(){
  if(!selected){ $('hint').textContent='Сначала выдели шкаф или одну из его дверец.'; return; }
- const moduleId=selected.userData.moduleId,doors=parts.filter(q=>q.userData.moduleId===moduleId&&q.userData.type==='facade'&&!q.userData.drawerId);
+ const moduleId=selected.userData.moduleId,doors=parts.filter(q=>q.userData.moduleId===moduleId&&q.userData.type==='facade'&&!q.userData.drawerId&&!q.userData.dishwasherDoor);
  if(!doors.length){ $('hint').textContent='У выбранного шкафа ещё нет фасадов.'; return; }
  if(doors.some(q=>q.userData.animating))return;
  const orientation=doors[0].userData.autoWallTurn||0,angle=orientation*Math.PI/2,axisX=Math.cos(angle),axisZ=-Math.sin(angle);
