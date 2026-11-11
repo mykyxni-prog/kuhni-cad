@@ -474,8 +474,8 @@ function toggleSelectedFacade(){
  const firstPivot=doors[0].userData.hingePivot;
  const angle=Array.isArray(firstPivot?.closedRotation)?(firstPivot.closedRotation[1]||0):(Number.isFinite(firstPivot?.closedRotation)?firstPivot.closedRotation:doors[0].rotation.y);
  const axisX=Math.cos(angle),axisZ=-Math.sin(angle);
- const centerX=doors.reduce((v,q)=>v+q.position.x,0)/doors.length,centerZ=doors.reduce((v,q)=>v+q.position.z,0)/doors.length;
- doors.sort((a,b)=>((a.position.x-centerX)*axisX+(a.position.z-centerZ)*axisZ)-((b.position.x-centerX)*axisX+(b.position.z-centerZ)*axisZ));
+ const closedCenter=q=>{const p=q.position.clone(),pivot=q.userData.hingePivot;if(pivot){const side=Number.isFinite(pivot.side)?pivot.side:-1,w=q.userData.size?.w||0,yaw=Array.isArray(pivot.closedRotation)?(pivot.closedRotation[1]||0):pivot.closedRotation;p.sub(new THREE.Vector3(side*w/2,0,0).applyAxisAngle(new THREE.Vector3(0,1,0),yaw))}return p};
+ doors.sort((a,b)=>{const pa=closedCenter(a),pb=closedCenter(b);return (pa.x-pb.x)*axisX+(pa.z-pb.z)*axisZ});
  const opening=(doors[0].userData.openProgress??(doors[0].userData.isOpen?1:0))<0.5,duration=500,started=performance.now();
  doors.forEach((mesh,index)=>{
   const u=mesh.userData;
