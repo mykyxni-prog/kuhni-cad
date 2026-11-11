@@ -469,9 +469,13 @@ function toggleSelectedFacade(){
  const moduleId=selected.userData.moduleId,doors=parts.filter(q=>q.userData.moduleId===moduleId&&q.userData.type==='facade'&&!q.userData.drawerId&&!q.userData.dishwasherDoor);
  if(!doors.length){ $('hint').textContent='У выбранного шкафа ещё нет фасадов.'; return; }
  if(doors.some(q=>q.userData.animating))return;
- const orientation=doors[0].userData.autoWallTurn||0,angle=orientation*Math.PI/2,axisX=Math.cos(angle),axisZ=-Math.sin(angle);
+ // Берём реальную ориентацию закрытого фасада, а не autoWallTurn:
+ // флаг стены может устареть после перемещения/поворота модуля.
+ const firstPivot=doors[0].userData.hingePivot;
+ const angle=Array.isArray(firstPivot?.closedRotation)?(firstPivot.closedRotation[1]||0):(Number.isFinite(firstPivot?.closedRotation)?firstPivot.closedRotation:doors[0].rotation.y);
+ const axisX=Math.cos(angle),axisZ=-Math.sin(angle);
  const centerX=doors.reduce((v,q)=>v+q.position.x,0)/doors.length,centerZ=doors.reduce((v,q)=>v+q.position.z,0)/doors.length;
- doors.sort((a,b)=>((a.position.x-centerX)*axisX+(a.position.z-centerZ)*axisZ)-((b.position.x-centerX)*axisX+(b.position.z-centerZ)*axisZ));
+ doors.sort((a,b)=>((a.position.x-centerX)*axisX+(a.position.z-centerZ)*axisZ)-((b.position.x-centerX)*axisX-(b.position.z-centerZ)*axisZ));
  const opening=(doors[0].userData.openProgress??(doors[0].userData.isOpen?1:0))<0.5,duration=500,started=performance.now();
  doors.forEach((mesh,index)=>{
   const u=mesh.userData;
