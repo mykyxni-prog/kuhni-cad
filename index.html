@@ -131,7 +131,7 @@ function undoAction(){
  refreshList();updateHandles();updateUndoButton();$('hint').textContent='Последнее действие отменено.';
 }
 $('undoBtn').onclick=undoAction;
-document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.id==='undoBtn'||b.disabled||['toolSelect','toolHome','viewTop','viewFront','viewLeft','viewRight','viewBack','frontBtn','ctxDimensions','addBase','addSink','addOven','addWardrobe' ,'addUpperCabinet'].includes(b.id))return;captureUndoSnapshot()},true);
+document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.id==='undoBtn'||b.disabled||['toolSelect','toolHome','viewTop','viewFront','viewLeft','viewRight','viewBack','frontBtn','ctxDimensions','addBase','addSink','addOven','addDishwasher','addWardrobe' ,'addUpperCabinet'].includes(b.id))return;captureUndoSnapshot()},true);
 renderer.domElement.addEventListener('pointerdown',e=>{if(e.button!==0)return;const rect=renderer.domElement.getBoundingClientRect();pointer.x=((e.clientX-rect.left)/rect.width)*2-1;pointer.y=-((e.clientY-rect.top)/rect.height)*2+1;raycaster.setFromCamera(pointer,camera);if(raycaster.intersectObjects(parts,false).length||(handleGroup.visible&&raycaster.intersectObjects(handles,false).length))captureUndoSnapshot()},true);
 document.addEventListener('keydown',e=>{
  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();e.stopImmediatePropagation();undoAction();return}
@@ -437,7 +437,6 @@ function toggleDishwasherDoor(){
  if(!selected||!parts.some(p=>p.userData.moduleId===selected.userData.moduleId&&p.userData.dishwasherModule)){ $('hint').textContent='Выбери встроенную посудомойку целиком.';return}
  const id=selected.userData.moduleId,doors=parts.filter(p=>p.userData.moduleId===id&&p.userData.dishwasherDoor);
  if(!doors.length||doors.some(p=>p.userData.animating))return;
- captureUndoSnapshot();
  const opening=(doors[0].userData.dishwasherOpenProgress||0)<.5,duration=550,started=performance.now(),pivotY=100;
  const states=doors.map(mesh=>({mesh,basePos:new THREE.Vector3(...mesh.userData.dishwasherBasePosition),baseRot:new THREE.Euler(...mesh.userData.dishwasherBaseRotation),from:mesh.userData.dishwasherOpenProgress||0,to:opening?1:0}));
  doors.forEach(p=>p.userData.animating=true);
