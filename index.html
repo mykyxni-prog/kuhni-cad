@@ -437,17 +437,27 @@ function toggleDishwasherDoor(){
  if(!selected||!parts.some(p=>p.userData.moduleId===selected.userData.moduleId&&p.userData.dishwasherModule)){ $('hint').textContent='Выбери встроенную посудомойку целиком.';return}
  const id=selected.userData.moduleId,doors=parts.filter(p=>p.userData.moduleId===id&&p.userData.dishwasherDoor);
  if(!doors.length||doors.some(p=>p.userData.animating))return;
- const opening=(doors[0].userData.dishwasherOpenProgress||0)<.5,duration=550,started=performance.now(),pivotY=100;
- const states=doors.map(mesh=>({mesh,basePos:new THREE.Vector3(...mesh.userData.dishwasherBasePosition),baseRot:new THREE.Euler(...mesh.userData.dishwasherBaseRotation),from:mesh.userData.dishwasherOpenProgress||0,to:opening?1:0}));
+ const opening=(doors[0].userData.dishwasherOpenProgress||0)<.5,duration=550,started=performance.now();
+ const mainDoor=doors.find(p=>p.userData.name==='Фасад посудомойки')||doors[0];
+ if(opening){
+  // Снимаем актуальное закрытое положение перед каждым открыванием:
+  // после перетаскивания или поворота модуль не возвращается в старые координаты.
+  doors.forEach(p=>{p.userData.dishwasherBasePosition=p.position.toArray();p.userData.dishwasherBaseRotation=p.rotation.toArray()});
+  const basePos=new THREE.Vector3(...mainDoor.userData.dishwasherBasePosition),baseRot=new THREE.Euler(...mainDoor.userData.dishwasherBaseRotation);
+  const pivot=basePos.clone().add(new THREE.Vector3(0,-mainDoor.userData.size.h/2,0).applyEuler(baseRot));
+  const axis=new THREE.Vector3(1,0,0).applyEuler(baseRot).normalize();
+  doors.forEach(p=>{p.userData.dishwasherPivot=pivot.toArray();p.userData.dishwasherAxis=axis.toArray()});
+ }
+ const states=doors.map(mesh=>({mesh,basePos:new THREE.Vector3(...mesh.userData.dishwasherBasePosition),baseRot:new THREE.Euler(...mesh.userData.dishwasherBaseRotation),pivot:new THREE.Vector3(...mesh.userData.dishwasherPivot),axis:new THREE.Vector3(...mesh.userData.dishwasherAxis).normalize(),from:mesh.userData.dishwasherOpenProgress||0,to:opening?1:0}));
  doors.forEach(p=>p.userData.animating=true);
  function frame(now){
   const t=Math.min(1,(now-started)/duration),ease=t*t*(3-2*t);
   states.forEach(a=>{
    const progress=a.from+(a.to-a.from)*ease,angle=Math.PI/2*progress;
-   const offset=a.basePos.clone().sub(new THREE.Vector3(a.basePos.x,pivotY,a.basePos.z));
-   offset.applyAxisAngle(new THREE.Vector3(1,0,0),angle);
-   a.mesh.position.set(a.basePos.x,pivotY+offset.y,a.basePos.z+offset.z);
-   a.mesh.rotation.copy(a.baseRot);a.mesh.rotation.x+=angle;
+   const offset=a.basePos.clone().sub(a.pivot).applyAxisAngle(a.axis,angle);
+   a.mesh.position.copy(a.pivot).add(offset);
+   const delta=new THREE.Quaternion().setFromAxisAngle(a.axis,angle),baseQuaternion=new THREE.Quaternion().setFromEuler(a.baseRot);
+   a.mesh.quaternion.copy(delta.multiply(baseQuaternion));
    a.mesh.userData.dishwasherOpenProgress=progress;a.mesh.updateMatrixWorld(true);
   });
   if(t<1){requestAnimationFrame(frame);return}
