@@ -136,6 +136,7 @@ $('undoBtn').onclick=undoAction;
 document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.id==='undoBtn'||b.disabled||['toolSelect','toolHome','viewTop','viewFront','viewLeft','viewRight','viewBack','frontBtn','ctxDimensions','addBase','addSink','addOven','addWardrobe' ,'addUpperCabinet'].includes(b.id))return;captureUndoSnapshot()},true);
 renderer.domElement.addEventListener('pointerdown',e=>{if(e.button!==0)return;const rect=renderer.domElement.getBoundingClientRect();pointer.x=((e.clientX-rect.left)/rect.width)*2-1;pointer.y=-((e.clientY-rect.top)/rect.height)*2+1;raycaster.setFromCamera(pointer,camera);if(raycaster.intersectObjects(parts,false).length||(handleGroup.visible&&raycaster.intersectObjects(handles,false).length))captureUndoSnapshot()},true);
 document.addEventListener('keydown',e=>{
+ if(e.key==='1'&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&!e.repeat&&!['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)&&!document.activeElement.isContentEditable){e.preventDefault();e.stopPropagation();addCabinet(800,720,520,false,true);return}
  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();e.stopImmediatePropagation();undoAction();return}
  if((e.key==='Enter'&&(e.target.matches('input,select,textarea')))||((e.key==='Delete'||e.key==='Backspace')&&!['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)))captureUndoSnapshot();
 },true);
