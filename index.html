@@ -284,12 +284,15 @@ function addCountertopWithCutouts(){
   if(!left||!right)return null;
   const dx=right.position.x-left.position.x,dz=right.position.z-left.position.z,len=Math.hypot(dx,dz);
   if(len<1)return null;
-  const ux=dx/len,uz=dz/len,vx=-uz,vz=ux;
+  const cx=(left.position.x+right.position.x)/2,cz=(left.position.z+right.position.z)/2;
+  let ux=dx/len,uz=dz/len,vx=-uz,vz=ux;
+  // У зеркального углового модуля боковины могут смотреть в обратную сторону.
+  // Нормаль столешницы всегда направляем от ближайших стен внутрь комнаты.
+  if((roomCenterX-cx)*vx+(roomMidZ-cz)*vz<0){ux=-ux;uz=-uz;vx=-vx;vz=-vz}
   // Отодвигаем весь модуль от стены один раз; столешница затем перекроет зазор до стены.
   if(!g.some(p=>p.userData.countertopWallShiftApplied)){
    g.forEach(p=>{p.position.x+=vx*40;p.position.z+=vz*40;p.userData.countertopWallShiftApplied=true});
   }
-  const cx=(left.position.x+right.position.x)/2,cz=(left.position.z+right.position.z)/2;
   const top=Math.max(...g.filter(p=>p.userData.name==='Боковина левая'||p.userData.name==='Боковина правая').map(p=>p.position.y+p.userData.size.h/2));
   return {id,g,w:left.userData.moduleWidth,d:left.userData.moduleDepth,cx,cz,u:{x:ux,z:uz},v:{x:vx,z:vz},along:cx*ux+cz*uz,across:cx*vx+cz*vz,top,oven:g.some(p=>p.userData.name==='Полка под духовку'),sink:g.some(p=>p.userData.name==='Переднее вертикальное усиление'),cooktop:g.some(p=>p.userData.modulePurpose==='cooktop')};
  }).filter(Boolean);
@@ -562,13 +565,26 @@ function syncModuleFacades(moduleId){
   const hadCountertop=parts.some(p=>p.userData.type==='countertop');
   const foot=drawerGroup.find(p=>p.userData.name==='Опора Volpato 31 — основание');
   const baseY=foot?foot.position.y-5:oldLeft.position.y-oldLeft.userData.size.h/2-116;
-  drawerGroup.forEach(p=>{model.remove(p);if(p.geometry)p.geometry.dispose();const i=parts.indexOf(p);if(i>=0)parts.splice(i,1)});
-  buildingModuleId=moduleId;
-  let rebuilt;
-  try{rebuilt=buildDrawerModule({THREE,addPart,addRoundPart,width:target.x,height:target.y,depth:target.z,legsHeight:100,variant})}
-  finally{buildingModuleId=null}
+  // Сначала строим новую группу отдельно: при ошибке старый шкаф остаётся на сцене.
+  const tempModuleId=nextModuleId++;
+  let rebuilt,newGroup=[];
+  buildingModuleId=tempModuleId;
+  try{
+   rebuilt=buildDrawerModule({THREE,addPart,addRoundPart,width:target.x,height:target.y,depth:target.z,legsHeight:100,variant});
+   newGroup=parts.filter(p=>p.userData.moduleId===tempModuleId);
+   if(!newGroup.length)throw new Error('Новая группа деталей не создана.');
+  }catch(error){
+   parts.filter(p=>p.userData.moduleId===tempModuleId).forEach(p=>{model.remove(p);p.geometry?.dispose();const i=parts.indexOf(p);if(i>=0)parts.splice(i,1)});
+   selectPart(oldLeft,false);
+   $('hint').textContent='Не удалось изменить размеры ящиков: '+(error?.message||error)+' Старый модуль сохранён.';
+   refreshList();return;
+  }finally{buildingModuleId=null}
+  drawerGroup.forEach(p=>{model.remove(p);p.geometry?.dispose();const i=parts.indexOf(p);if(i>=0)parts.splice(i,1)});
+  newGroup.forEach(p=>{
+   p.userData.moduleId=moduleId;
+   if(p.userData.drawerId)p.userData.drawerId=String(p.userData.drawerId).replace(String(tempModuleId),String(moduleId));
+  });
   const turn=new THREE.Matrix4().makeRotationY(angle);
-  const newGroup=parts.filter(p=>p.userData.moduleId===moduleId);
   newGroup.forEach(p=>{
    p.position.applyMatrix4(turn);p.position.x+=oldCenter.x;p.position.y+=baseY;p.position.z+=oldCenter.z;
    p.rotation.y+=angle;
