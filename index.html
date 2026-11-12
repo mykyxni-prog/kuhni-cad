@@ -563,6 +563,7 @@ function syncModuleFacades(moduleId){
   const axisX=oldRight.position.x-oldLeft.position.x,axisZ=oldRight.position.z-oldLeft.position.z;
   const angle=Math.atan2(-axisZ,axisX),rowAxis=new THREE.Vector3(axisX,0,axisZ).normalize();
   const hadCountertop=parts.some(p=>p.userData.type==='countertop');
+  const hadCountertopWallShift=drawerGroup.some(p=>p.userData.countertopWallShiftApplied);
   const foot=drawerGroup.find(p=>p.userData.name==='Опора Volpato 31 — основание');
   const baseY=foot?foot.position.y-5:oldLeft.position.y-oldLeft.userData.size.h/2-116;
   // Сначала строим новую группу отдельно: при ошибке старый шкаф остаётся на сцене.
@@ -590,6 +591,7 @@ function syncModuleFacades(moduleId){
    p.rotation.y+=angle;
    p.userData.moduleWidth=target.x;p.userData.moduleHeight=target.y;p.userData.moduleDepth=target.z;
    p.userData.drawerModule=true;p.userData.drawerVariant=variant;
+   if(hadCountertopWallShift)p.userData.countertopWallShiftApplied=true;
    if(p.userData.drawerId)p.userData.drawerDepth=rebuilt.dimensions.drawerDepth;
    p.updateMatrixWorld(true);
   });
