@@ -216,24 +216,26 @@ function addSinkVisual(countertop,x,z){
  countertop.add(group);
 }
 function getNextModuleX(width){
- // Считаем положение только по корпусам нижнего ряда, не по фурнитуре,
- // фасадам, столешницам и отдельным вспомогательным деталям.
+ // Обычные модули считаем по боковинам корпуса.
+ // У углового модуля учитываем фальшпанели и наружные планки:
+ // после зеркального поворота они выступают дальше корпуса по X.
  let maxX=-Infinity;
  const ids=new Set(parts.filter(p=>p.userData.moduleId!=null&&p.userData.type!=='countertop'&&p.userData.moduleKind!=='upper').map(p=>p.userData.moduleId));
  for(const id of ids){
   const group=parts.filter(p=>p.userData.moduleId===id);
   const left=group.find(p=>p.userData.name==='Боковина левая'),right=group.find(p=>p.userData.name==='Боковина правая');
   if(!left||!right)continue;
-  // Учитываем фактическую проекцию боковин на ось X.
-  // У зеркального углового модуля боковины разнесены по Z, но сам модуль
-  // занимает часть ширины вдоль задней стены — его нельзя пропускать.
   const bounds=new THREE.Box3();
-  bounds.expandByObject(left);
-  bounds.expandByObject(right);
+  if(group.some(p=>p.userData.moduleKind==='corner')){
+   group.filter(p=>p.userData.type!=='leg'&&p.userData.type!=='hinge').forEach(p=>bounds.expandByObject(p));
+  }else{
+   bounds.expandByObject(left);
+   bounds.expandByObject(right);
+  }
   const edge=bounds.max.x;
   if(Number.isFinite(edge))maxX=Math.max(maxX,edge);
  }
- // Первый нижний шкаф начинается точно от левой стены комнаты.
+ // Следующий модуль начинается за самой выступающей частью углового узла.
  return Number.isFinite(maxX)?maxX+width/2:roomLeft+width/2;
 }
 function shiftKitchenRowAfterResize(moduleId,oldCenter,axis,oldWidth,newWidth){
@@ -373,7 +375,7 @@ addPart('panel','Наружная планка фасадная 720×24',16,h,24
 addPart('panel','Наружная планка корпусная 720×24',16,h,24,-w/2+24+8,legsH+h/2,frontZ+16,'oak',16);
 addPart('facade','Фасад',447,h-3,16,-w/2+400+200+450/2,legsH+(h-3)/2,frontZ,'milk',16);
 for(const lx of [-w/2+55,w/2-55])for(const lz of [-d/2+55,d/2-55]){addRoundPart('Опора Volpato 31 — основание',48,10,lx,5,lz,'graphite');addRoundPart('Опора Volpato 31 — стойка',28,82,lx,51,lz,'graphite');addPart('leg','Опора Volpato 31 — верхнее крепление',46,8,46,lx,96,lz,'graphite',8)}
-buildingModuleId=null;const group=parts.filter(p=>p.userData.moduleId===id);group.forEach(p=>{p.position.x+=nextX;p.updateMatrixWorld(true);p.userData.moduleWidth=w;p.userData.moduleHeight=h;p.userData.moduleDepth=d});const wallOffset=-3500+d/2+10;group.forEach(p=>{p.position.z+=wallOffset;p.updateMatrixWorld(true)});const hingePanel=group.find(p=>p.userData.name==='Фальшпанель 200');if(hingePanel){const hingeX=hingePanel.position.x+hingePanel.userData.size.w/2+8;[bottomY+110,bottomY+h/2+35,bottomY+h-110].forEach(hy=>{const hinge=addFirmaxHinge(id,hingeX,hingePanel.position.z,hy,-1,true);hinge.userData.cornerHinge=true})}const bounds=new THREE.Box3();group.forEach(p=>bounds.expandByObject(p));const center=bounds.getCenter(new THREE.Vector3()),viewOffset=camera.position.clone().sub(controls.target).normalize().multiplyScalar(2600);controls.target.copy(center);camera.position.copy(center).add(viewOffset);controls.update();selectPart(group.find(p=>p.userData.type!=='leg'),false);$('hint').textContent='Угловой модуль 1050 мм добавлен: фальшпанели 400 и 200 мм, проём 450 мм, фасад 447 мм.'}
+buildingModuleId=null;const group=parts.filter(p=>p.userData.moduleId===id);group.forEach(p=>{p.position.x+=nextX;p.updateMatrixWorld(true);p.userData.moduleWidth=w;p.userData.moduleHeight=h;p.userData.moduleDepth=d;p.userData.moduleKind='corner'});const wallOffset=-3500+d/2+10;group.forEach(p=>{p.position.z+=wallOffset;p.updateMatrixWorld(true)});const hingePanel=group.find(p=>p.userData.name==='Фальшпанель 200');if(hingePanel){const hingeX=hingePanel.position.x+hingePanel.userData.size.w/2+8;[bottomY+110,bottomY+h/2+35,bottomY+h-110].forEach(hy=>{const hinge=addFirmaxHinge(id,hingeX,hingePanel.position.z,hy,-1,true);hinge.userData.cornerHinge=true})}const bounds=new THREE.Box3();group.forEach(p=>bounds.expandByObject(p));const center=bounds.getCenter(new THREE.Vector3()),viewOffset=camera.position.clone().sub(controls.target).normalize().multiplyScalar(2600);controls.target.copy(center);camera.position.copy(center).add(viewOffset);controls.update();selectPart(group.find(p=>p.userData.type!=='leg'),false);$('hint').textContent='Угловой модуль 1050 мм добавлен: фальшпанели 400 и 200 мм, проём 450 мм, фасад 447 мм.'}
 function addCornerMirror(){
  addCornerStraight();
  const id=selectedModuleId,group=parts.filter(p=>p.userData.moduleId===id);
