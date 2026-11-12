@@ -319,7 +319,10 @@ function addCountertopWithCutouts(){
   const us=row.items.map(m=>m.along),halfWidths=row.items.map(m=>m.w/2);
   const minU=Math.min(...us.map((u,i)=>u-halfWidths[i])),maxU=Math.max(...us.map((u,i)=>u+halfWidths[i]));
   const countertopDepth=600; // Стандартная глубина столешницы — 600 мм.
-  const moduleBack=row.across-row.depth/2,minV=moduleBack-40,maxV=minV+countertopDepth,topY=Math.max(...row.items.map(m=>m.top));
+  const moduleBack=row.across-row.depth/2;
+  // Ограничиваем задний край плоскостью ближайшей стены, чтобы столешница не проходила сквозь неё.
+  const wallBoundary=Math.abs(row.v.x)>.985?(row.v.x>0?roomLeft:-roomRight):(row.v.z>0?roomBack:-roomFront);
+  const minV=Math.max(moduleBack-40,wallBoundary+2),maxV=minV+countertopDepth,topY=Math.max(...row.items.map(m=>m.top));
   const shape=new THREE.Shape();
   shape.moveTo(minU,-minV);shape.lineTo(maxU,-minV);shape.lineTo(maxU,-maxV);shape.lineTo(minU,-maxV);shape.closePath();
   const cutouts=row.items.filter(m=>m.oven||m.sink||m.cooktop);
@@ -359,7 +362,36 @@ addPart('panel','Наружная планка корпусная 720×24',16,h,
 addPart('facade','Фасад',447,h-3,16,-w/2+400+200+450/2,legsH+(h-3)/2,frontZ,'milk',16);
 for(const lx of [-w/2+55,w/2-55])for(const lz of [-d/2+55,d/2-55]){addRoundPart('Опора Volpato 31 — основание',48,10,lx,5,lz,'graphite');addRoundPart('Опора Volpato 31 — стойка',28,82,lx,51,lz,'graphite');addPart('leg','Опора Volpato 31 — верхнее крепление',46,8,46,lx,96,lz,'graphite',8)}
 buildingModuleId=null;const group=parts.filter(p=>p.userData.moduleId===id);group.forEach(p=>{p.position.x+=nextX;p.updateMatrixWorld(true);p.userData.moduleWidth=w;p.userData.moduleHeight=h;p.userData.moduleDepth=d});const wallOffset=-3500+d/2+10;group.forEach(p=>{p.position.z+=wallOffset;p.updateMatrixWorld(true)});const hingePanel=group.find(p=>p.userData.name==='Фальшпанель 200');if(hingePanel){const hingeX=hingePanel.position.x+hingePanel.userData.size.w/2+8;[bottomY+110,bottomY+h/2+35,bottomY+h-110].forEach(hy=>{const hinge=addFirmaxHinge(id,hingeX,hingePanel.position.z,hy,-1,true);hinge.userData.cornerHinge=true})}const bounds=new THREE.Box3();group.forEach(p=>bounds.expandByObject(p));const center=bounds.getCenter(new THREE.Vector3()),viewOffset=camera.position.clone().sub(controls.target).normalize().multiplyScalar(2600);controls.target.copy(center);camera.position.copy(center).add(viewOffset);controls.update();selectPart(group.find(p=>p.userData.type!=='leg'),false);$('hint').textContent='Угловой модуль 1050 мм добавлен: фальшпанели 400 и 200 мм, проём 450 мм, фасад 447 мм.'}
-function addCornerMirror(){addCornerStraight();const id=selectedModuleId,group=parts.filter(p=>p.userData.moduleId===id);if(!group.length)return;const box=new THREE.Box3();group.forEach(p=>box.expandByObject(p));const center=box.getCenter(new THREE.Vector3());group.forEach(p=>{p.position.x=2*center.x-p.position.x;p.rotation.y=-p.rotation.y;if(p.userData.cornerHingeSide!==undefined)p.userData.cornerHingeSide=1;if(p.userData.type==='facade')p.userData.cornerHingeSide=1;if(p.userData.cornerHinge){p.userData.sideSign=1}p.updateMatrixWorld(true)});model.updateMatrixWorld(true);selectPart(group.find(p=>p.userData.type!=='leg')||group[0],false);refreshList();$('hint').textContent='Зеркальный угловой модуль 1050 мм добавлен.'}
+function addCornerMirror(){
+ addCornerStraight();
+ const id=selectedModuleId,group=parts.filter(p=>p.userData.moduleId===id);
+ if(!group.length)return;
+ // Зеркалим фасадную компоновку относительно центра модуля.
+ const box=new THREE.Box3();group.forEach(p=>box.expandByObject(p));
+ const center=box.getCenter(new THREE.Vector3());
+ group.forEach(p=>{
+  p.position.x=2*center.x-p.position.x;
+  p.rotation.y=-p.rotation.y;
+  if(p.userData.cornerHingeSide!==undefined)p.userData.cornerHingeSide=1;
+  if(p.userData.type==='facade')p.userData.cornerHingeSide=1;
+  if(p.userData.cornerHinge)p.userData.sideSign=1;
+ });
+ // Ставим зеркальный модуль в левый угол: задняя и левая стороны у стен,
+ // фасад обращён в помещение.
+ const turn=Math.PI/2,cos=Math.cos(turn),sin=Math.sin(turn);
+ const targetCenter=new THREE.Vector3(roomLeft+520/2+10,center.y,roomBack+1050/2+10);
+ group.forEach(p=>{
+  const x=p.position.x-center.x,z=p.position.z-center.z;
+  p.position.x=targetCenter.x+x*cos+z*sin;
+  p.position.z=targetCenter.z-x*sin+z*cos;
+  p.rotation.y+=turn;
+  p.updateMatrixWorld(true);
+ });
+ model.updateMatrixWorld(true);
+ selectPart(group.find(p=>p.userData.type!=='leg')||group[0],false);
+ refreshList();
+ $('hint').textContent='Зеркальный угловой модуль 1050 мм установлен в левый угол комнаты. Столешница ограничивается плоскостью стены.';
+}
 
 function addFirmaxHinge(moduleId,sideX,frontZ,y,sideSign,frontMount=false){
  const assembly=new THREE.Group();assembly.position.set(sideX,y,frontZ);
