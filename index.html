@@ -319,7 +319,7 @@ function addCountertopWithCutouts(){
   const us=row.items.map(m=>m.along),halfWidths=row.items.map(m=>m.w/2);
   const minU=Math.min(...us.map((u,i)=>u-halfWidths[i])),maxU=Math.max(...us.map((u,i)=>u+halfWidths[i]));
   const countertopDepth=600; // Полная глубина столешницы вместе со скруглённой кромкой.
-  const edgeRadius=1; // Почти незаметное скругление переднего края, мм.
+  const edgeRadius=3; // Небольшое скругление переднего края, мм.
   const moduleBack=row.across-row.depth/2;
   // Ограничиваем задний край плоскостью ближайшей стены, чтобы столешница не проходила сквозь неё.
   const wallBoundary=Math.abs(row.v.x)>.985?(row.v.x>0?roomLeft:-roomRight):(row.v.z>0?roomBack:-roomFront);
@@ -334,7 +334,7 @@ function addCountertopWithCutouts(){
   const geo=new THREE.ExtrudeGeometry(shape,{depth:38,bevelEnabled:false,curveSegments:1});geo.rotateX(-Math.PI/2);
   const stoneMat=makeMaterial('stone');
   const mesh=new THREE.Mesh(geo,stoneMat);
-  // Минимальное скругление 1 мм по верхнему и нижнему ребру передней кромки.
+  // Небольшое скругление 3 мм по верхнему и нижнему ребру передней кромки.
   // Вместе с кромкой общая глубина столешницы остаётся ровно 600 мм.
   const edgeLength=maxU-minU,edgeCenter=(minU+maxU)/2;
   const edgeWeb=new THREE.Mesh(new THREE.BoxGeometry(edgeLength,38-2*edgeRadius,2*edgeRadius),stoneMat);
