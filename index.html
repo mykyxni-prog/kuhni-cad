@@ -570,7 +570,7 @@ function syncModuleFacades(moduleId){
   const turn=new THREE.Matrix4().makeRotationY(angle);
   const newGroup=parts.filter(p=>p.userData.moduleId===moduleId);
   newGroup.forEach(p=>{
-   p.position.applyMatrix4(turn);p.position.x+=centerX;p.position.y+=baseY;p.position.z+=centerZ;
+   p.position.applyMatrix4(turn);p.position.x+=oldCenter.x;p.position.y+=baseY;p.position.z+=oldCenter.z;
    p.rotation.y+=angle;
    p.userData.moduleWidth=target.x;p.userData.moduleHeight=target.y;p.userData.moduleDepth=target.z;
    p.userData.drawerModule=true;p.userData.drawerVariant=variant;
