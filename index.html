@@ -224,9 +224,13 @@ function getNextModuleX(width){
   const group=parts.filter(p=>p.userData.moduleId===id);
   const left=group.find(p=>p.userData.name==='Боковина левая'),right=group.find(p=>p.userData.name==='Боковина правая');
   if(!left||!right)continue;
-  // Для стандартного нижнего ряда боковины идут вдоль оси X.
-  if(Math.abs(right.position.z-left.position.z)>Math.abs(right.position.x-left.position.x))continue;
-  const edge=Math.max(left.position.x+left.userData.size.w/2,right.position.x+right.userData.size.w/2);
+  // Учитываем фактическую проекцию боковин на ось X.
+  // У зеркального углового модуля боковины разнесены по Z, но сам модуль
+  // занимает часть ширины вдоль задней стены — его нельзя пропускать.
+  const bounds=new THREE.Box3();
+  bounds.expandByObject(left);
+  bounds.expandByObject(right);
+  const edge=bounds.max.x;
   if(Number.isFinite(edge))maxX=Math.max(maxX,edge);
  }
  // Первый нижний шкаф начинается точно от левой стены комнаты.
