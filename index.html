@@ -318,11 +318,12 @@ function addCountertopWithCutouts(){
  for(const row of rows){
   const us=row.items.map(m=>m.along),halfWidths=row.items.map(m=>m.w/2);
   const minU=Math.min(...us.map((u,i)=>u-halfWidths[i])),maxU=Math.max(...us.map((u,i)=>u+halfWidths[i]));
-  const countertopDepth=600; // Стандартная глубина столешницы — 600 мм.
+  const countertopDepth=600; // Полная глубина столешницы вместе со скруглённой кромкой.
+  const edgeRadius=3; // Минимальное скругление переднего края, мм.
   const moduleBack=row.across-row.depth/2;
   // Ограничиваем задний край плоскостью ближайшей стены, чтобы столешница не проходила сквозь неё.
   const wallBoundary=Math.abs(row.v.x)>.985?(row.v.x>0?roomLeft:-roomRight):(row.v.z>0?roomBack:-roomFront);
-  const minV=Math.max(moduleBack-40,wallBoundary+2),maxV=minV+countertopDepth,topY=Math.max(...row.items.map(m=>m.top));
+  const minV=Math.max(moduleBack-40,wallBoundary+2),maxV=minV+countertopDepth-edgeRadius,topY=Math.max(...row.items.map(m=>m.top));
   const shape=new THREE.Shape();
   shape.moveTo(minU,-minV);shape.lineTo(maxU,-minV);shape.lineTo(maxU,-maxV);shape.lineTo(minU,-maxV);shape.closePath();
   const cutouts=row.items.filter(m=>m.oven||m.sink||m.cooktop);
@@ -333,11 +334,18 @@ function addCountertopWithCutouts(){
   const geo=new THREE.ExtrudeGeometry(shape,{depth:38,bevelEnabled:false,curveSegments:1});geo.rotateX(-Math.PI/2);
   const stoneMat=makeMaterial('stone');
   const mesh=new THREE.Mesh(geo,stoneMat);
-  // Классический постформинг: скруглённый передний край по всей длине столешницы.
-  const frontRoll=new THREE.Mesh(new THREE.CylinderGeometry(19,19,maxU-minU,32,1,false),stoneMat);
-  frontRoll.geometry.rotateZ(Math.PI/2);
-  frontRoll.position.set((minU+maxU)/2,19,maxV);
-  mesh.add(frontRoll);
+  // Небольшое скругление 3 мм по верхнему и нижнему ребру передней кромки.
+  // Вместе с кромкой общая глубина столешницы остаётся ровно 600 мм.
+  const edgeLength=maxU-minU,edgeCenter=(minU+maxU)/2;
+  const edgeWeb=new THREE.Mesh(new THREE.BoxGeometry(edgeLength,38-2*edgeRadius,2*edgeRadius),stoneMat);
+  edgeWeb.position.set(edgeCenter,19,maxV);
+  mesh.add(edgeWeb);
+  [edgeRadius,38-edgeRadius].forEach(y=>{
+   const roll=new THREE.Mesh(new THREE.CylinderGeometry(edgeRadius,edgeRadius,edgeLength,24,1,false),stoneMat);
+   roll.geometry.rotateZ(Math.PI/2);
+   roll.position.set(edgeCenter,y,maxV);
+   mesh.add(roll);
+  });
   mesh.position.set(0,topY,0);
   mesh.rotation.y=-Math.atan2(row.u.z,row.u.x);
   cutouts.forEach(m=>{if(m.cooktop)addCooktopVisual(mesh,m.along,m.across);else if(m.sink)addSinkVisual(mesh,m.along,m.across)});
