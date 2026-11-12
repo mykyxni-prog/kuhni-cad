@@ -367,8 +367,10 @@ function addCornerMirror(){
  const id=selectedModuleId,group=parts.filter(p=>p.userData.moduleId===id);
  if(!group.length)return;
  // Зеркалим фасадную компоновку относительно центра модуля.
- const box=new THREE.Box3();group.forEach(p=>box.expandByObject(p));
- const center=box.getCenter(new THREE.Vector3());
+ const leftSide=group.find(p=>p.userData.name==='Боковина левая'),rightSide=group.find(p=>p.userData.name==='Боковина правая');
+ if(!leftSide||!rightSide)return;
+ // Центр берём по корпусу, а не по петлям: фурнитура не должна смещать шкаф от стен.
+ const center=new THREE.Vector3((leftSide.position.x+rightSide.position.x)/2,0,(leftSide.position.z+rightSide.position.z)/2);
  group.forEach(p=>{
   p.position.x=2*center.x-p.position.x;
   p.rotation.y=-p.rotation.y;
