@@ -568,8 +568,17 @@ async function addRefrigerator(){
   const url='https://www.renderahouse.com/downloads/free-3d-models/fridge/fridge.glb';
   const gltf=await new GLTFLoader().loadAsync(url);
   const source=gltf.scene;
-  source.rotation.x=-Math.PI/2;
-  source.scale.setScalar(1000);
+  // GLB-файлы встречаются как с Y-up, так и с Z-up. Определяем вертикальную
+  // ось по самой длинной стороне исходного холодильника, а не поворачиваем вслепую.
+  source.updateMatrixWorld(true);
+  const rawBounds=new THREE.Box3().setFromObject(source);
+  const rawSize=rawBounds.getSize(new THREE.Vector3());
+  const axes=[rawSize.x,rawSize.y,rawSize.z];
+  const verticalAxis=axes.indexOf(Math.max(...axes));
+  if(verticalAxis===2)source.rotation.x=-Math.PI/2;       // Z-up -> Y-up
+  else if(verticalAxis===0)source.rotation.z=Math.PI/2;  // X-up -> Y-up
+  // Если вертикальная ось уже Y, поворот не нужен.
+  source.scale.setScalar(1000); // исходная модель в метрах
   source.updateMatrixWorld(true);
   const meshes=[];
   source.traverse(child=>{
@@ -583,11 +592,10 @@ async function addRefrigerator(){
   const bounds=new THREE.Box3();
   meshes.forEach(item=>{item.geometry.computeBoundingBox();bounds.union(item.geometry.boundingBox)});
   const size=bounds.getSize(new THREE.Vector3());
-  if(!Number.isFinite(size.y)||size.y<100)throw new Error('Не удалось определить ориентацию модели.');
+  if(!Number.isFinite(size.y)||size.y<100||size.y<size.x||size.y<size.z)throw new Error('Не удалось поставить модель вертикально: проверьте оси исходного GLB.');
   const targetW=760,targetH=1860,targetD=824;
-  const scaleX=targetW/size.x,scaleY=targetH/size.y,scaleZ=targetD/size.z;
-  // Единый коэффициент сохраняет пропорции исходной модели.
-  const uniform=Math.min(scaleX,scaleY,scaleZ);
+  // Не растягиваем холодильник: сохраняем исходный масштаб и пропорции модели.
+  const uniform=1;
   const center=bounds.getCenter(new THREE.Vector3());
   const offset=new THREE.Vector3(-center.x*uniform,-bounds.min.y*uniform,-center.z*uniform);
   const nextX=getNextModuleX(targetW),wallOffset=-3500+targetD/2+10,moduleId=nextModuleId++;
@@ -611,7 +619,7 @@ async function addRefrigerator(){
  }catch(error){
   $('hint').textContent='Не удалось загрузить 3D-холодильник: '+(error?.message||error)+'. Проверь подключение к интернету.';
  }finally{
-  button.disabled=false;button.querySelector('span').textContent='＋ Холодильник 760 мм';
+  button.disabled=false;button.querySelector('span').textContent='＋ Холодильник';
  }
 }
 function addUpperShelf(){
