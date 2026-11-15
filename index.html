@@ -494,36 +494,68 @@ function addDishDryer(w=800,h=720,d=330){
  const moduleId=selected.userData.moduleId,group=parts.filter(p=>p.userData.moduleId===moduleId);
  const left=group.find(p=>p.userData.name==='Боковина левая'),right=group.find(p=>p.userData.name==='Боковина правая');
  if(!left||!right)return;
- const centerX=(left.position.x+right.position.x)/2,centerZ=(left.position.z+right.position.z)/2;
- const bottomY=left.position.y-left.userData.size.h/2,t=5,innerW=w-48,front=centerZ+d/2-34,back=centerZ-d/2+34;
- const steel=new THREE.MeshStandardMaterial({color:0xc3c9cc,metalness:.88,roughness:.24});
- const darkSteel=new THREE.MeshStandardMaterial({color:0x858d91,metalness:.82,roughness:.3});
- const addWire=(name,bw,bh,bd,x,y,z,mat=steel)=>{
-  const mesh=new THREE.Mesh(new THREE.BoxGeometry(bw,bh,bd),mat);
-  mesh.position.set(x,y,z);mesh.userData={partId:nextId++,moduleId,type:'hardware',name,size:{w:bw,h:bh,d:bd},material:'chrome',thickness:Math.min(bw,bh,bd),moduleWidth:w,moduleHeight:h,moduleDepth:d,moduleKind:'dish-dryer'};
+ const cx=(left.position.x+right.position.x)/2,cz=(left.position.z+right.position.z)/2;
+ const bottom=left.position.y-left.userData.size.h/2,innerW=w-42;
+ const steel=new THREE.MeshStandardMaterial({color:0xd8dddf,metalness:.94,roughness:.19});
+ const steelDark=new THREE.MeshStandardMaterial({color:0x9ca5a9,metalness:.9,roughness:.23});
+ const trayMat=new THREE.MeshStandardMaterial({color:0xf0f1ef,metalness:.12,roughness:.3});
+ const addRod=(name,a,b,r=2.4,mat=steel)=>{
+  const va=new THREE.Vector3(...a),vb=new THREE.Vector3(...b),delta=vb.clone().sub(va),len=delta.length();
+  const mesh=new THREE.Mesh(new THREE.CylinderGeometry(r,r,len,12),mat);
+  mesh.position.copy(va.add(vb).multiplyScalar(.5));
+  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),delta.normalize());
+  mesh.userData={partId:nextId++,moduleId,type:'hardware',shape:'cylinder',name,size:{w:r*2,h:len,d:r*2},material:'chrome',thickness:r*2,moduleWidth:w,moduleHeight:h,moduleDepth:d,moduleKind:'upper',dishDryer:true};
   model.add(mesh);parts.push(mesh);return mesh;
  };
- // Нижняя решётка для тарелок: продольные направляющие и поперечные разделители.
- const lowerY=bottomY+105;
- addWire('Сушка — нижняя передняя направляющая',innerW,5,5,centerX,lowerY,front,darkSteel);
- addWire('Сушка — нижняя задняя направляющая',innerW,5,5,centerX,lowerY,back,darkSteel);
+ const addBox=(name,bw,bh,bd,x,y,z,mat,shape='box')=>{
+  const mesh=new THREE.Mesh(new THREE.BoxGeometry(bw,bh,bd),mat);
+  mesh.position.set(x,y,z);
+  mesh.userData={partId:nextId++,moduleId,type:'hardware',shape,name,size:{w:bw,h:bh,d:bd},material:'chrome',thickness:Math.min(bw,bh,bd),moduleWidth:w,moduleHeight:h,moduleDepth:d,moduleKind:'upper',dishDryer:true};
+  model.add(mesh);parts.push(mesh);return mesh;
+ };
+ const zFront=cz+d/2-34,zBack=cz-d/2+34;
+ // Цельный съёмный пластиковый поддон с невысокими бортиками.
+ const trayY=bottom+47,trayW=w-62,trayD=d-76;
+ addBox('Поддон сушки — основание',trayW,5,trayD,cx,trayY,cz,trayMat);
+ [[trayW,8,4,cx,trayY+6,cz-trayD/2],[trayW,8,4,cx,trayY+6,cz+trayD/2],[4,8,trayD,cx-trayW/2,trayY+6,cz],[4,8,trayD,cx+trayW/2,trayY+6,cz]].forEach(v=>addBox('Поддон сушки — бортик',...v,trayMat));
+ // Нижняя хромированная корзина: две боковые рамки, опорные прутья и частые разделители для тарелок.
+ const plateY=bottom+145,plateTop=plateY+84;
+ for(const x of [cx-innerW/2+8,cx+innerW/2-8]){
+  addRod('Боковая рамка нижней корзины',[x,plateY,zBack],[x,plateTop,zBack],3);
+  addRod('Боковая рамка нижней корзины',[x,plateTop,zBack],[x,plateTop,zFront],3);
+  addRod('Боковая рамка нижней корзины',[x,plateTop,zFront],[x,plateY,zFront],3);
+  addRod('Нижняя опора корзины',[x,plateY,zBack],[x,plateY,zFront],3,steelDark);
+ }
  for(let i=0;i<15;i++){
-  const x=centerX-innerW/2+24+i*(innerW-48)/14;
-  addWire('Разделитель для тарелок '+(i+1),5,72,Math.max(80,d-100),x,lowerY+37,centerZ,steel);
+  const x=cx-innerW/2+20+i*(innerW-40)/14;
+  // Каждая проволочная скоба образует отдельный паз для тарелки.
+  addRod('Разделитель тарелок '+(i+1),[x,plateY+4,zBack+8],[x,plateTop,zBack+26],2.1);
+  addRod('Разделитель тарелок '+(i+1),[x,plateTop,zBack+26],[x,plateTop,zFront-26],2.1);
+  addRod('Разделитель тарелок '+(i+1),[x,plateTop,zFront-26],[x,plateY+4,zFront-8],2.1);
  }
- // Верхняя решётка для чашек и стаканов.
- const upperY=bottomY+h-125;
- addWire('Сушка — верхняя передняя направляющая',innerW,5,5,centerX,upperY,front,darkSteel);
- addWire('Сушка — верхняя задняя направляющая',innerW,5,5,centerX,upperY,back,darkSteel);
- for(let i=0;i<9;i++){
-  const z=back+18+i*(front-back-36)/8;
-  addWire('Решётка для чашек '+(i+1),innerW,5,5,centerX,upperY+10,z,steel);
+ for(let j=0;j<5;j++){
+  const z=zBack+15+j*(zFront-zBack-30)/4;
+  addRod('Опорный прут нижней корзины',[cx-innerW/2+8,plateY+4,z],[cx+innerW/2-8,plateY+4,z],2.3);
  }
- // Поддон для воды — тонкий съёмный лоток под нижней сушкой.
- addWire('Поддон для воды',w-58,4,d-78,centerX,bottomY+38,centerZ,new THREE.MeshStandardMaterial({color:0xe1e4e5,metalness:.55,roughness:.32}));
+ // Верхняя полка-корзина для чашек: прямоугольная рама и частая проволочная сетка.
+ const cupY=bottom+h-154,cupW=innerW-12,cupD=d-82;
+ const xL=cx-cupW/2,xR=cx+cupW/2,zB=cz-cupD/2,zF=cz+cupD/2;
+ [[xL,cupY,zB,xR,cupY,zB],[xL,cupY,zF,xR,cupY,zF],[xL,cupY,zB,xL,cupY,zF],[xR,cupY,zB,xR,cupY,zF]].forEach(v=>addRod('Рамка верхней полки для чашек',[v[0],v[1],v[2]],[v[3],v[4],v[5]],3,steelDark));
+ for(let i=0;i<18;i++){
+  const x=xL+8+i*(cupW-16)/17;
+  addRod('Проволока верхней полки',[x,cupY,zB+4],[x,cupY,zF-4],2);
+ }
+ for(let j=0;j<7;j++){
+  const z=zB+7+j*(cupD-14)/6;
+  addRod('Поперечина верхней полки',[xL+4,cupY,z],[xR-4,cupY,z],2);
+ }
+ // Четыре крепёжные опоры верхней корзины.
+ for(const x of [xL+8,xR-8])for(const z of [zB+8,zF-8]){
+  addRod('Опора верхней корзины',[x,cupY-20,z],[x,cupY,z],3,steelDark);
+ }
  refreshList();
  selectPart(parts.find(p=>p.userData.moduleId===moduleId&&p.userData.name==='Боковина левая')||group[0],false);
- $('hint').textContent='Добавлена сушка для посуды 800 мм: нижний ярус для тарелок, верхний для чашек и съёмный поддон. Ширину можно изменить в свойствах модуля.';
+ $('hint').textContent='Установлена двухъярусная хромированная сушка: корзина для тарелок, верхняя решётка для чашек и съёмный поддон.';
 }
 function addUpperShelf(){
  if(!selected||individualMode){$('hint').textContent='Выбери навесной шкаф целиком.';return}
