@@ -574,6 +574,7 @@ function applyProperties(){if(!selected)return;if(!individualMode){$('hint').tex
 function stepSize(axis,delta){if(!selected)return;$('part'+axis).value=Math.max(1,(+$('part'+axis).value||1)+delta);applyProperties()}
 function syncModuleFacades(moduleId){
  const existing=parts.filter(p=>p.userData.moduleId===moduleId&&p.userData.type==='facade'&&!p.userData.drawerId);
+ const savedAppearance=existing[0]?{material:Array.isArray(existing[0].material)?existing[0].material.map(m=>m?.clone()):existing[0].material?.clone(),data:{material:existing[0].userData.material,customColor:existing[0].userData.customColor,facadeName:existing[0].userData.facadeName,facadeStyle:existing[0].userData.facadeStyle}}:null;
  existing.forEach(p=>{model.remove(p);p.geometry.dispose();const i=parts.indexOf(p);if(i>=0)parts.splice(i,1)});
  const group=parts.filter(p=>p.userData.moduleId===moduleId&&p.userData.type!=='facade'&&p.userData.type!=='leg'&&p.userData.type!=='hinge');
  if(!group.length)return;
@@ -592,6 +593,7 @@ function syncModuleFacades(moduleId){
    const localOffset=split?(i===0?-(doorW+4)/2:(doorW+4)/2):0;
    const offset=new THREE.Vector3(localOffset,0,0).applyAxisAngle(new THREE.Vector3(0,1,0),angle);
    const mesh=addPart('facade',split?'Фасад '+(i+1):'Фасад',doorW,doorH,16,frontX+offset.x,y,frontZ+offset.z,'milk',16);
+   if(savedAppearance?.material){if(Array.isArray(mesh.material))mesh.material.forEach(m=>m?.dispose());else mesh.material?.dispose();mesh.material=Array.isArray(savedAppearance.material)?savedAppearance.material.map(m=>m?.clone()):savedAppearance.material.clone();Object.assign(mesh.userData,savedAppearance.data)}
    mesh.rotation.y=angle;mesh.userData.autoWallTurn=orientation;
    const cornerHinge=parts.find(p=>p.userData.moduleId===moduleId&&p.userData.cornerHinge);
    if(cornerHinge)mesh.userData.cornerHingeSide=cornerHinge.userData.sideSign===1?1:-1;
