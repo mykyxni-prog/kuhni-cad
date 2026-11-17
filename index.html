@@ -297,7 +297,7 @@ function addCountertopWithCutouts(){
   if(!left||!right)return null;
   const dx=right.position.x-left.position.x,dz=right.position.z-left.position.z,len=Math.hypot(dx,dz);
   if(len<1)return null;
-  const cx=(left.position.x+right.position.x)/2,cz=(left.position.z+right.position.z)/2;
+  let cx=(left.position.x+right.position.x)/2,cz=(left.position.z+right.position.z)/2;
   let ux=dx/len,uz=dz/len,vx=-uz,vz=ux;
   // У зеркального углового модуля боковины могут смотреть в обратную сторону.
   // Нормаль столешницы всегда направляем от ближайших стен внутрь комнаты.
@@ -305,6 +305,8 @@ function addCountertopWithCutouts(){
   // Отодвигаем весь модуль от стены один раз; столешница затем перекроет зазор до стены.
   if(!g.some(p=>p.userData.countertopWallShiftApplied)){
    g.forEach(p=>{p.position.x+=vx*40;p.position.z+=vz*40;p.userData.countertopWallShiftApplied=true});
+   // Пересчитываем центр после сдвига корпуса, чтобы мойка и варочная поверхность оставались по центру столешницы.
+   cx=(left.position.x+right.position.x)/2;cz=(left.position.z+right.position.z)/2;
   }
   const top=Math.max(...g.filter(p=>p.userData.name==='Боковина левая'||p.userData.name==='Боковина правая').map(p=>p.position.y+p.userData.size.h/2));
   return {id,g,w:left.userData.moduleWidth,d:left.userData.moduleDepth,cx,cz,u:{x:ux,z:uz},v:{x:vx,z:vz},along:cx*ux+cz*uz,across:cx*vx+cz*vz,top,oven:g.some(p=>p.userData.name==='Полка под духовку'),sink:g.some(p=>p.userData.name==='Переднее вертикальное усиление'),cooktop:g.some(p=>p.userData.modulePurpose==='cooktop'),assignedSink:g.some(p=>p.userData.modulePurpose==='sink')};
