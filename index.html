@@ -297,7 +297,7 @@ function makeBacksplashMaterial(mesh){
  const key=mesh.userData.backsplashMaterial,material=new THREE.MeshStandardMaterial({color:'#e8e5dc',roughness:.78,metalness:0});
  if(typeof key==='string'&&key.startsWith('countertop_')){
   const source=getCountertopTexture(key.slice(11));
-  if(source){const texture=source.clone();texture.wrapS=THREE.RepeatWrapping;texture.wrapT=THREE.RepeatWrapping;texture.repeat.set(Math.max(.15,(mesh.userData.size?.w||600)/600),Math.max(.15,(mesh.userData.backsplashHeight||600)/600));texture.center.set(.5,.5);texture.rotation=Math.PI/2;texture.anisotropy=renderer.capabilities.getMaxAnisotropy();texture.needsUpdate=true;material.map=texture;material.color.set('#ffffff')}
+  if(source){const texture=source.clone();texture.wrapS=THREE.RepeatWrapping;texture.wrapT=THREE.RepeatWrapping;texture.repeat.set(Math.max(.15,(mesh.userData.size?.w||600)/600),Math.max(.15,(mesh.userData.backsplashHeight||600)/600));texture.anisotropy=renderer.capabilities.getMaxAnisotropy();texture.needsUpdate=true;material.map=texture;material.color.set('#ffffff')}
  }
  return material;
 }
@@ -326,12 +326,12 @@ function applyCountertopDecor(mesh,key){
  if(!mesh||mesh.userData?.type!=='countertop')return;
  const size=mesh.userData.size||{w:600,h:38,d:600};
  const surfaceMat=makeMaterial(key,size);
- if(surfaceMat.map){surfaceMat.map.repeat.set(1,1);surfaceMat.map.center.set(.5,.5);surfaceMat.map.rotation=Math.PI/2;surfaceMat.map.needsUpdate=true}
+ if(surfaceMat.map){surfaceMat.map.repeat.set(1,1);surfaceMat.map.center.set(.5,.5);surfaceMat.map.needsUpdate=true}
  mesh.material=surfaceMat;mesh.userData.material=key;
  mesh.children.forEach(child=>{
   if(child.userData?.countertopSurface){
    const childMat=makeMaterial(key,size);
-   if(childMat.map){childMat.map.center.set(.5,.5);childMat.map.rotation=Math.PI/2;childMat.map.needsUpdate=true}
+   if(childMat.map){childMat.map.center.set(.5,.5);childMat.map.needsUpdate=true}
    child.material=childMat;
   }
  });
