@@ -497,10 +497,8 @@ function addUpperCabinet(w=800,h=720,d=330){
  addPart('back','Задняя стенка ХДФ 3 мм (в паз)',innerW,innerH,3,x,bottomY+h/2,-d/2+12,'milk',3);
  buildingModuleId=null;
  const group=parts.filter(p=>p.userData.moduleId===id);
- const wallOffset=-3500+d/2+10;
+ placeNewModuleGroup(group,w,d);
  group.forEach(p=>{
-  p.position.x+=nextX;
-  p.position.z+=wallOffset;
   p.userData.moduleWidth=w;p.userData.moduleHeight=h;p.userData.moduleDepth=d;
   p.userData.moduleKind='upper';p.userData.autoWallTurn=0;
   p.updateMatrixWorld(true);
