@@ -147,6 +147,7 @@ function undoAction(){
   mesh.userData={...x.userData,size:x.userData.size?{...x.userData.size}:undefined,hingePivot:x.userData.hingePivot?{...x.userData.hingePivot,closedRotation:Array.isArray(x.userData.hingePivot.closedRotation)?[...x.userData.hingePivot.closedRotation]:x.userData.hingePivot.closedRotation}:undefined};
   if(mesh.userData.movingLink&&x.movingLinkRotation)mesh.userData.movingLink.rotation.copy(x.movingLinkRotation);
   model.add(mesh);
+  if(mesh.userData.type==='countertop')updateCountertopBacksplash(mesh,!!mesh.userData.backsplashEnabled,mesh.userData.backsplashHeight||600);
  });
  parts=state.parts.map(x=>x.mesh);nextId=state.nextId;nextModuleId=state.nextModuleId;roomOn=state.roomOn;
  $('wallColor').value=state.wallColor;$('floorColor').value=state.floorColor;wallMat.color.set(state.wallColor);floorMat.color.set(state.floorColor);room.visible=roomOn;grid.visible=!roomOn;scene.background=new THREE.Color(roomOn?'#d8d3c9':'#303633');$('roomBtn').textContent='Комната: '+(roomOn?'вкл.':'выкл.');
