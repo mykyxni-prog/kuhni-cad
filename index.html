@@ -324,11 +324,12 @@ function updateCountertopBacksplash(mesh,enabled,height=600){
 }
 function applyCountertopDecor(mesh,key){
  if(!mesh||mesh.userData?.type!=='countertop')return;
- const surfaceMat=makeMaterial(key,mesh.userData.size||{w:600,h:38,d:600});
+ const size=mesh.userData.size||{w:600,h:38,d:600};
+ const surfaceMat=makeMaterial(key,size);
+ if(surfaceMat.map)surfaceMat.map.repeat.set(1,1);
  mesh.material=surfaceMat;mesh.userData.material=key;
  mesh.children.forEach(child=>{
-  if(child.userData?.countertopSurface)child.material=surfaceMat;
-  
+  if(child.userData?.countertopSurface)child.material=makeMaterial(key,size);
  });
 }
 function addCountertopWithCutouts(){
@@ -391,18 +392,29 @@ function addCountertopWithCutouts(){
    const path=new THREE.Path();path.moveTo(left,-front);path.lineTo(left,-back);path.lineTo(right,-back);path.lineTo(right,-front);path.closePath();shape.holes.push(path);
   });
   const geo=new THREE.ExtrudeGeometry(shape,{depth:38,bevelEnabled:false,curveSegments:1});geo.rotateX(-Math.PI/2);
+  // Для верхней плоскости задаём UV по реальным миллиметрам столешницы:
+  // это не даёт декору исчезать или смещаться на большой плоскости.
+  const geoPos=geo.attributes.position,geoUv=geo.attributes.uv;
+  for(let vi=0;vi<geoPos.count;vi++){
+   if(Math.abs(geoPos.getY(vi)-38)<0.01){
+    geoUv.setXY(vi,(geoPos.getX(vi)-minU)/600,(geoPos.getZ(vi)-minV)/600);
+   }
+  }
+  geoUv.needsUpdate=true;
   const style=oldStyles[made.length]||{},surfaceKey=style.material||'stone';
   const stoneMat=makeMaterial(surfaceKey,{w:maxU-minU,h:38,d:countertopDepth});
+  if(stoneMat.map)stoneMat.map.repeat.set(1,1);
+  const edgeMat=makeMaterial(surfaceKey,{w:maxU-minU,h:38,d:countertopDepth});
   const mesh=new THREE.Mesh(geo,stoneMat);
   // Скругление 10 мм по верхнему и нижнему ребру передней кромки.
   // Вместе с кромкой общая глубина столешницы остаётся ровно 600 мм.
   const edgeLength=maxU-minU,edgeCenter=(minU+maxU)/2;
-  const edgeWeb=new THREE.Mesh(new THREE.BoxGeometry(edgeLength,38-2*edgeRadius,2*edgeRadius),stoneMat);
+  const edgeWeb=new THREE.Mesh(new THREE.BoxGeometry(edgeLength,38-2*edgeRadius,2*edgeRadius),edgeMat);
   edgeWeb.userData.countertopSurface=true;
   edgeWeb.position.set(edgeCenter,19,maxV);
   mesh.add(edgeWeb);
   [edgeRadius,38-edgeRadius].forEach(y=>{
-   const roll=new THREE.Mesh(new THREE.CylinderGeometry(edgeRadius,edgeRadius,edgeLength,24,1,false),stoneMat);
+   const roll=new THREE.Mesh(new THREE.CylinderGeometry(edgeRadius,edgeRadius,edgeLength,24,1,false),edgeMat);
    roll.userData.countertopSurface=true;
    roll.geometry.rotateZ(Math.PI/2);
    roll.position.set(edgeCenter,y,maxV);
