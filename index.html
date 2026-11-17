@@ -104,7 +104,7 @@ function orientWoodGrain(mesh){const map=mesh?.material?.map;if(!map)return;cons
 function openContempoTextureDB(){return new Promise((resolve,reject)=>{const request=indexedDB.open('kuhniCadTextureLibrary',1);request.onupgradeneeded=()=>{if(!request.result.objectStoreNames.contains('textures'))request.result.createObjectStore('textures')};request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error)})}
 async function loadStoredContempoTextures(){try{const db=await openContempoTextureDB();return await new Promise((resolve,reject)=>{const tx=db.transaction('textures','readonly'),store=tx.objectStore('textures'),request=store.getAll(),keys=store.getAllKeys();tx.oncomplete=()=>{const out={};(keys.result||[]).forEach((k,i)=>out[k]=request.result[i]);db.close();resolve(out)};tx.onerror=()=>reject(tx.error)})}catch(e){return {}}}
 async function storeContempoTexture(code,data){const db=await openContempoTextureDB();await new Promise((resolve,reject)=>{const tx=db.transaction('textures','readwrite');tx.objectStore('textures').put(data,code);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)});db.close()}
-function refreshContempoTextureViews(){document.querySelectorAll('[data-contempo-code]').forEach(sw=>{const src=contempoTextureData[sw.dataset.contempoCode];if(src){sw.style.backgroundImage='url('+src+')';sw.style.backgroundSize='cover';sw.style.backgroundPosition='center'}});parts.forEach(p=>{const key=p.userData?.material;if(typeof key==='string'&&key.startsWith('contempo_'))p.material=makeMaterial(key,p.userData.size||{w:600,h:900,d:600},p.userData.name);orientWoodGrain(p)});if(selected)selectPart(selected,false);refreshList()}
+function refreshContempoTextureViews(){document.querySelectorAll('[data-contempo-code]').forEach(sw=>{const src=contempoTextureData[sw.dataset.contempoCode];if(src){sw.style.backgroundImage='url('+src+')';sw.style.backgroundSize='contain';sw.style.backgroundRepeat='no-repeat';sw.style.backgroundPosition='center';sw.style.backgroundColor='#777'}});parts.forEach(p=>{const key=p.userData?.material;if(typeof key==='string'&&key.startsWith('contempo_'))p.material=makeMaterial(key,p.userData.size||{w:600,h:900,d:600},p.userData.name);orientWoodGrain(p)});if(selected)selectPart(selected,false);refreshList()}
 async function importContempoZip(source){if(!window.JSZip)throw new Error('Не загрузился модуль чтения ZIP. Обнови страницу и попробуй ещё раз.');const zip=await JSZip.loadAsync(source),files=Object.values(zip.files).filter(f=>!f.dir&&f.name.toLowerCase().endsWith('.jpg'));let count=0;for(const file of files){const code=file.name.split('/').pop().replace(/.jpg$/i,'').toUpperCase();if(!/^(\d{4}|K\d{3})$/.test(code))continue;const blob=await file.async('blob'),bitmap=await createImageBitmap(blob),canvas=document.createElement('canvas');canvas.width=512;canvas.height=768;const ctx=canvas.getContext('2d');ctx.fillStyle='#ffffff';ctx.fillRect(0,0,512,768);const scale=Math.min(512/bitmap.width,768/bitmap.height),w=bitmap.width*scale,h=bitmap.height*scale;ctx.drawImage(bitmap,(512-w)/2,(768-h)/2,w,h);bitmap.close();const data=canvas.toDataURL('image/webp',.68);contempoTextureData[code]=data;await storeContempoTexture(code,data);count++}refreshContempoTextureViews();return count}
 function refreshHarmonyPlusTextureViews(){document.querySelectorAll('[data-harmonyplus-code]').forEach(sw=>{const src=harmonyPlusTextureData[sw.dataset.harmonyplusCode];if(src){sw.style.backgroundImage='url('+src+')';sw.style.backgroundSize='cover';sw.style.backgroundPosition='center'}});parts.forEach(p=>{const key=p.userData?.material;if(typeof key==='string'&&key.startsWith('harmonyplus_')){p.material=makeMaterial(key,p.userData.size||{w:600,h:900,d:600},p.userData.name);orientWoodGrain(p)}});if(selected)selectPart(selected,false);refreshList()}
 async function clearHarmonyPlusTextures(){const db=await openContempoTextureDB();await new Promise((resolve,reject)=>{const tx=db.transaction('textures','readwrite'),store=tx.objectStore('textures'),req=store.getAllKeys();req.onsuccess=()=>{(req.result||[]).filter(k=>String(k).startsWith('harmonyplus_')).forEach(k=>store.delete(k))};tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)});db.close();Object.keys(harmonyPlusTextureData).forEach(k=>delete harmonyPlusTextureData[k]);Object.keys(harmonyPlusTextureCache).forEach(k=>{harmonyPlusTextureCache[k].dispose?.();delete harmonyPlusTextureCache[k]});document.querySelectorAll('[data-harmonyplus-code]').forEach(sw=>{const d=harmonyPlusDecors.find(x=>x.code===sw.dataset.harmonyplusCode);sw.style.backgroundImage='';if(d)sw.style.background=d.color});refreshHarmonyPlusTextureViews()}
@@ -299,15 +299,21 @@ function shiftKitchenRowAfterResize(moduleId,oldCenter,axis,oldWidth,newWidth){
 }
 function setCountertopTextureScale(texture,widthMm=600,heightMm=600){
  if(!texture)return;
+ // Файл декора — готовая полноразмерная текстура. На столешнице повторяем
+ // исходный прямоугольник без растяжения: его ширина равна 600 мм,
+ // высота определяется только исходными пропорциями JPG.
  const apply=()=>{
   const image=texture.image,iw=image?.naturalWidth||image?.videoWidth||image?.width||0,ih=image?.naturalHeight||image?.videoHeight||image?.height||0;
-  const aspect=iw>0&&ih>0?iw/ih:1;
+  if(!(iw>0&&ih>0))return;
+  const aspect=iw/ih;
+  texture.wrapS=THREE.RepeatWrapping;texture.wrapT=THREE.RepeatWrapping;
+  texture.offset.set(0,0);texture.center.set(0,0);texture.rotation=0;
   texture.repeat.set(Math.max(.001,widthMm/600),Math.max(.001,heightMm*aspect/600));
   texture.needsUpdate=true;
  };
  apply();
  const image=texture.image;
- if(image&&!image.complete&&image.addEventListener)image.addEventListener('load',apply,{once:true});
+ if(image&&image.addEventListener)image.addEventListener('load',apply,{once:true});
 }
 function makeBacksplashMaterial(mesh){
  const key=mesh.userData.backsplashMaterial,material=new THREE.MeshStandardMaterial({color:'#e8e5dc',roughness:.78,metalness:0});
