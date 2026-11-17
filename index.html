@@ -302,9 +302,9 @@ function addCountertopWithCutouts(){
   // У зеркального углового модуля боковины могут смотреть в обратную сторону.
   // Нормаль столешницы всегда направляем от ближайших стен внутрь комнаты.
   if((roomCenterX-cx)*vx+(roomMidZ-cz)*vz<0){ux=-ux;uz=-uz;vx=-vx;vz=-vz}
-  // Отодвигаем весь модуль от стены один раз; столешница затем перекроет зазор до стены.
-  if(!g.some(p=>p.userData.countertopWallShiftApplied)){
-   g.forEach(p=>{p.position.x+=vx*40;p.position.z+=vz*40;p.userData.countertopWallShiftApplied=true});
+  // Корпуса должны оставаться вплотную к стене. У старых проектов отменяем прежний сдвиг на 40 мм.
+  if(g.some(p=>p.userData.countertopWallShiftApplied)){
+   g.forEach(p=>{p.position.x-=vx*40;p.position.z-=vz*40;delete p.userData.countertopWallShiftApplied;p.updateMatrixWorld(true)});
   }
   const top=Math.max(...g.filter(p=>p.userData.name==='Боковина левая'||p.userData.name==='Боковина правая').map(p=>p.position.y+p.userData.size.h/2));
   return {id,g,w:left.userData.moduleWidth,d:left.userData.moduleDepth,cx,cz,u:{x:ux,z:uz},v:{x:vx,z:vz},along:cx*ux+cz*uz,across:cx*vx+cz*vz,top,oven:g.some(p=>p.userData.name==='Полка под духовку'),sink:g.some(p=>p.userData.name==='Переднее вертикальное усиление'),cooktop:g.some(p=>p.userData.modulePurpose==='cooktop'),assignedSink:g.some(p=>p.userData.modulePurpose==='sink')};
@@ -336,7 +336,7 @@ function addCountertopWithCutouts(){
   const moduleBack=row.across-row.depth/2;
   // Ограничиваем задний край плоскостью ближайшей стены, чтобы столешница не проходила сквозь неё.
   const wallBoundary=Math.abs(row.v.x)>.985?(row.v.x>0?roomLeft:-roomRight):(row.v.z>0?roomBack:-roomFront);
-  const minV=Math.max(moduleBack-40,wallBoundary+2),maxV=minV+countertopDepth-edgeRadius,topY=Math.max(...row.items.map(m=>m.top));
+  const minV=Math.max(moduleBack-40,wallBoundary+0.5),maxV=minV+countertopDepth-edgeRadius,topY=Math.max(...row.items.map(m=>m.top));
   const shape=new THREE.Shape();
   shape.moveTo(minU,-minV);shape.lineTo(maxU,-minV);shape.lineTo(maxU,-maxV);shape.lineTo(minU,-maxV);shape.closePath();
   const cutouts=row.items.filter(m=>m.oven||m.sink||m.cooktop||m.assignedSink);
@@ -382,7 +382,7 @@ addPart('panel','Наружная планка фасадная 720×24',16,h,24
 addPart('panel','Наружная планка корпусная 720×24',16,h,24,-w/2+24+8,legsH+h/2,frontZ+16,'oak',16);
 addPart('facade','Фасад',447,h-3,16,-w/2+400+200+450/2,legsH+(h-3)/2,frontZ,'milk',16);
 for(const lx of [-w/2+55,w/2-55])for(const lz of [-d/2+55,d/2-55]){addRoundPart('Опора Volpato 31 — основание',48,10,lx,5,lz,'graphite');addRoundPart('Опора Volpato 31 — стойка',28,82,lx,51,lz,'graphite');addPart('leg','Опора Volpato 31 — верхнее крепление',46,8,46,lx,96,lz,'graphite',8)}
-buildingModuleId=null;const group=parts.filter(p=>p.userData.moduleId===id);group.forEach(p=>{p.position.x+=nextX;p.updateMatrixWorld(true);p.userData.moduleWidth=w;p.userData.moduleHeight=h;p.userData.moduleDepth=d;p.userData.moduleKind='corner'});const wallOffset=-3500+d/2+10;group.forEach(p=>{p.position.z+=wallOffset;p.updateMatrixWorld(true)});const hingePanel=group.find(p=>p.userData.name==='Фальшпанель 200');if(hingePanel){const hingeX=hingePanel.position.x+hingePanel.userData.size.w/2+8;[bottomY+110,bottomY+h/2+35,bottomY+h-110].forEach(hy=>{const hinge=addFirmaxHinge(id,hingeX,hingePanel.position.z,hy,-1,true);hinge.userData.cornerHinge=true})}const bounds=new THREE.Box3();group.forEach(p=>bounds.expandByObject(p));const center=bounds.getCenter(new THREE.Vector3()),viewOffset=camera.position.clone().sub(controls.target).normalize().multiplyScalar(2600);controls.target.copy(center);camera.position.copy(center).add(viewOffset);controls.update();selectPart(group.find(p=>p.userData.type!=='leg'),false);$('hint').textContent='Угловой модуль 1050 мм добавлен: фальшпанели 400 и 200 мм, проём 450 мм, фасад 447 мм.'}
+buildingModuleId=null;const group=parts.filter(p=>p.userData.moduleId===id);group.forEach(p=>{p.position.x+=nextX;p.updateMatrixWorld(true);p.userData.moduleWidth=w;p.userData.moduleHeight=h;p.userData.moduleDepth=d;p.userData.moduleKind='corner'});const wallOffset=-3500+d/2;group.forEach(p=>{p.position.z+=wallOffset;p.updateMatrixWorld(true)});const hingePanel=group.find(p=>p.userData.name==='Фальшпанель 200');if(hingePanel){const hingeX=hingePanel.position.x+hingePanel.userData.size.w/2+8;[bottomY+110,bottomY+h/2+35,bottomY+h-110].forEach(hy=>{const hinge=addFirmaxHinge(id,hingeX,hingePanel.position.z,hy,-1,true);hinge.userData.cornerHinge=true})}const bounds=new THREE.Box3();group.forEach(p=>bounds.expandByObject(p));const center=bounds.getCenter(new THREE.Vector3()),viewOffset=camera.position.clone().sub(controls.target).normalize().multiplyScalar(2600);controls.target.copy(center);camera.position.copy(center).add(viewOffset);controls.update();selectPart(group.find(p=>p.userData.type!=='leg'),false);$('hint').textContent='Угловой модуль 1050 мм добавлен: фальшпанели 400 и 200 мм, проём 450 мм, фасад 447 мм.'}
 function addCornerMirror(){
  addCornerStraight();
  const id=selectedModuleId,group=parts.filter(p=>p.userData.moduleId===id);
@@ -402,7 +402,7 @@ function addCornerMirror(){
  // Ставим зеркальный модуль в левый угол: задняя и левая стороны у стен,
  // фасад обращён в помещение.
  const turn=Math.PI/2,cos=Math.cos(turn),sin=Math.sin(turn);
- const targetCenter=new THREE.Vector3(roomLeft+520/2+10,center.y,roomBack+1050/2+10);
+ const targetCenter=new THREE.Vector3(roomLeft+520/2,center.y,roomBack+1050/2);
  group.forEach(p=>{
   const x=p.position.x-center.x,z=p.position.z-center.z;
   p.position.x=targetCenter.x+x*cos+z*sin;
@@ -602,7 +602,7 @@ async function addRefrigerator(){
   const uniform=1;
   const center=bounds.getCenter(new THREE.Vector3());
   const offset=new THREE.Vector3(-center.x*uniform,-bounds.min.y*uniform,-center.z*uniform);
-  const nextX=getNextModuleX(targetW),wallOffset=-3500+targetD/2+10,moduleId=nextModuleId++;
+  const nextX=getNextModuleX(targetW),wallOffset=-3500+targetD/2,moduleId=nextModuleId++;
   meshes.forEach((item,index)=>{
    item.geometry.scale(uniform,uniform,uniform);
    item.geometry.translate(offset.x,offset.y,offset.z);
@@ -949,18 +949,13 @@ renderer.domElement.addEventListener('pointerdown',e=>{if(e.button!==0)return;co
 const hh=raycaster.intersectObjects(handles.filter(()=>handleGroup.visible),false);if(hh.length&&selected&&individualMode){resizeHandle=hh[0].object;resizeStart={pos:selected.position.clone(),size:{...selected.userData.size},corner:resizeHandle.userData.corner};resizePlane.setFromNormalAndCoplanarPoint(camera.getWorldDirection(new THREE.Vector3()).negate(),hh[0].point);resizeStartPoint.copy(hh[0].point);resizeHandle.userData.startPoint=hh[0].point.clone();controls.enabled=false;renderer.domElement.setPointerCapture(e.pointerId);return}
 const hits=raycaster.intersectObjects(parts,false);if(!hits.length){selectPart(null);return}if(hits.length){const mesh=hits[0].object;const individual=e.shiftKey;selectPart(mesh,individual);drag=mesh;dragMoved=false;dragMembers=individual?[mesh]:parts.filter(p=>p.userData.moduleId===mesh.userData.moduleId);dragObstacles=parts.filter(p=>!dragMembers.includes(p)&&p.userData.moduleId!==mesh.userData.moduleId).map(p=>new THREE.Box3().setFromObject(p));dragStart.set(mesh.position.x,mesh.position.y,mesh.position.z);controls.enabled=false;const dragBounds=new THREE.Box3();dragMembers.forEach(p=>dragBounds.expandByObject(p));dragFloorOffset=dragMembers.some(p=>p.userData.moduleKind==='upper')?0:-3-dragBounds.min.y;const viewDir=camera.getWorldDirection(new THREE.Vector3());if(Math.abs(viewDir.y)>.82){dragPlane.copy(floorPlane)}else{const horizontalView=new THREE.Vector3(viewDir.x,0,viewDir.z).normalize();dragPlane.setFromNormalAndCoplanarPoint(horizontalView,mesh.position)}dragPointerStart.set(e.clientX,e.clientY);if(!raycaster.ray.intersectPlane(dragPlane,dragPointerWorldStart))dragPointerWorldStart.copy(mesh.position);const right=new THREE.Vector3(1,0,0).applyQuaternion(camera.quaternion);dragCameraRight.set(right.x,0,right.z);if(dragCameraRight.lengthSq()<0.0001)dragCameraRight.set(1,0,0);dragCameraRight.normalize();const up=new THREE.Vector3(0,1,0).applyQuaternion(camera.quaternion);dragCameraUp.set(up.x,0,up.z);if(dragCameraUp.lengthSq()>0.0001)dragCameraUp.normalize();else dragCameraUp.set(0,0,0);const distance=camera.position.distanceTo(controls.target);dragUnitsPerPixel=2*distance*Math.tan(THREE.MathUtils.degToRad(camera.fov/2))/Math.max(1,renderer.domElement.clientHeight);renderer.domElement.setPointerCapture(e.pointerId)}});
 function autoTurnModuleToWall(members){
- // Модульные ящики сохраняют исходную ориентацию при переносе к другой стене.
- if(!roomOn||members.length<2||members.some(p=>p.userData.drawerModule||p.userData.moduleKind==='upper'))return false;
+ if(!roomOn||members.length<2)return false;
  const box=new THREE.Box3();members.forEach(p=>{p.updateMatrixWorld(true);box.expandByObject(p)});
- const leftDistance=box.min.x-roomLeft,backDistance=box.min.z-roomBack;
- const nearLeft=leftDistance>=-2&&leftDistance<190,nearBack=backDistance>=-2&&backDistance<190;
- if(!nearLeft&&!nearBack)return false;
- const wallSide=nearLeft&&(!nearBack||leftDistance<=backDistance)?'left':'back';
- const current=members[0].userData.autoWallTurn||0,desired=wallSide==='left'?1:0;
- if(current===desired)return false;
- // Перед поворотом возвращаем каждый фасад в закрытое нейтральное положение.
- // Иначе ранее открытая дверца сохраняет старую ось петли и после разворота
- // может распахиваться в обратную сторону.
+ const distances={left:box.min.x-roomLeft,back:box.min.z-roomBack,right:roomRight-box.max.x,front:roomFront-box.max.z};
+ const candidates=Object.entries(distances).filter(([side,d])=>d>=-2&&d<190).sort((a,b)=>a[1]-b[1]);
+ if(!candidates.length)return false;
+ const wallSide=candidates[0][0],desired=wallSide==='left'?1:wallSide==='right'?-1:wallSide==='front'?2:0;
+ const current=members[0].userData.autoWallTurn||0,angle=(desired-current)*Math.PI/2;
  members.forEach(p=>{
   const pivot=p.userData?.hingePivot;
   if(p.userData?.type==='facade'&&pivot){
@@ -969,39 +964,25 @@ function autoTurnModuleToWall(members){
    p.rotation.y=closed;
    p.position.sub(new THREE.Vector3(side*w/2,0,0).applyAxisAngle(new THREE.Vector3(0,1,0),closed));
    p.geometry.translate(side*w/2,0,0);
-   delete p.userData.hingePivot;
-   p.userData.openProgress=0;p.userData.isOpen=false;p.userData.animating=false;
+   delete p.userData.hingePivot;p.userData.openProgress=0;p.userData.isOpen=false;p.userData.animating=false;
    p.updateMatrixWorld(true);
   }
-  if(p.userData?.hingeAssembly&&p.userData.movingLink){
-   p.userData.movingLink.rotation.y=0;p.userData.hingeProgress=0;
-  }
+  if(p.userData?.hingeAssembly&&p.userData.movingLink){p.userData.movingLink.rotation.y=0;p.userData.hingeProgress=0}
  });
- const center=box.getCenter(new THREE.Vector3()),angle=(desired-current)*Math.PI/2;
- const saved=members.map(p=>({p,pos:p.position.clone(),rot:p.rotation.clone(),quat:p.quaternion.clone(),closedRotation:p.userData.hingePivot?.closedRotation}));
- members.forEach(p=>{
-  p.position.sub(center).applyAxisAngle(new THREE.Vector3(0,1,0),angle).add(center);
-  p.rotateY(angle);
-  // If this door has already been opened once, its hinge pivot is baked into
-  // the geometry and its closed rotation must follow every later module turn.
-  if(p.userData.type==='facade'&&p.userData.hingePivot){
-   const pivot=p.userData.hingePivot;
-   if(Array.isArray(pivot.closedRotation))pivot.closedRotation[1]=(pivot.closedRotation[1]||0)+angle;
-   else pivot.closedRotation=(pivot.closedRotation||0)+angle;
-  }
-  p.updateMatrixWorld(true);
- });
+ const center=box.getCenter(new THREE.Vector3());
+ const saved=members.map(p=>({p,pos:p.position.clone(),rot:p.rotation.clone(),quat:p.quaternion.clone(),pivot:p.userData.hingePivot?JSON.parse(JSON.stringify(p.userData.hingePivot)):null}));
+ if(Math.abs(angle)>1e-6)members.forEach(p=>{p.position.sub(center).applyAxisAngle(new THREE.Vector3(0,1,0),angle).add(center);p.rotateY(angle);p.updateMatrixWorld(true)});
  const turnedBox=new THREE.Box3();members.forEach(p=>turnedBox.expandByObject(p));
- const shift=wallSide==='left'?new THREE.Vector3(roomLeft+10-turnedBox.min.x,0,0):new THREE.Vector3(0,0,roomBack+10-turnedBox.min.z);
+ const shift=new THREE.Vector3();
+ if(wallSide==='left')shift.x=roomLeft+0.5-turnedBox.min.x;
+ else if(wallSide==='right')shift.x=roomRight-0.5-turnedBox.max.x;
+ else if(wallSide==='back')shift.z=roomBack+0.5-turnedBox.min.z;
+ else shift.z=roomFront-0.5-turnedBox.max.z;
  members.forEach(p=>{p.position.add(shift);p.updateMatrixWorld(true)});
  const finalBox=new THREE.Box3();members.forEach(p=>finalBox.expandByObject(p));
- const blocked=members.some(p=>{const boxPart=new THREE.Box3().setFromObject(p);return dragObstacles.some(o=>boxPart.intersectsBox(o))});
+ const blocked=members.some(p=>{const b=new THREE.Box3().setFromObject(p);return dragObstacles.some(o=>b.intersectsBox(o))});
  if(blocked||finalBox.min.y < -3||(roomOn&&finalBox.max.y>roomHeight)){
-  saved.forEach(a=>{
-   a.p.position.copy(a.pos);a.p.rotation.copy(a.rot);a.p.quaternion.copy(a.quat);
-   if(a.p.userData.hingePivot)a.p.userData.hingePivot.closedRotation=a.closedRotation;
-   a.p.updateMatrixWorld(true);
-  });
+  saved.forEach(a=>{a.p.position.copy(a.pos);a.p.rotation.copy(a.rot);a.p.quaternion.copy(a.quat);if(a.pivot)a.p.userData.hingePivot=a.pivot;a.p.updateMatrixWorld(true)});
   return false;
  }
  members.forEach(p=>{p.userData.autoWallTurn=desired});
@@ -1020,7 +1001,7 @@ let moved=tryMove(nx-dragStart.x,ny-dragStart.y,nz-dragStart.z);
 if(!moved){const movedX=tryMove(nx-dragStart.x,0,0),movedY=tryMove(0,ny-dragStart.y,0),movedZ=tryMove(0,0,nz-dragStart.z);moved=movedX||movedY||movedZ}
 if(moved){dragMoved=true;dragStart.set(drag.position.x,drag.position.y,drag.position.z);dragPointerWorldStart.copy(dragPointerWorldCurrent);dragFloorOffset=0;}
 if(selected){$('posX').value=Math.round(selected.position.x);$('posY').value=Math.round(selected.position.y);$('posZ').value=Math.round(selected.position.z)}updateHandles()});
-function stopDrag(){if(resizeHandle){resizeHandle=null;resizeStart=null;controls.enabled=true;if(selected){selectPart(selected,true);refreshList()}return}if(!drag)return;const refreshTop=dragMoved&&!individualMode&&parts.some(p=>p.userData.type==='countertop');drag=null;dragMoved=false;dragMembers=[];dragObstacles=[];controls.enabled=true;if(selected)selectPart(selected,individualMode);if(refreshTop){const keep=selected,mode=individualMode;addCountertopWithCutouts();if(keep&&parts.includes(keep))selectPart(keep,mode)}}renderer.domElement.addEventListener('pointerup',stopDrag);renderer.domElement.addEventListener('pointercancel',stopDrag);
+function stopDrag(){if(resizeHandle){resizeHandle=null;resizeStart=null;controls.enabled=true;if(selected){selectPart(selected,true);refreshList()}return}if(!drag)return;const wallTurned=!individualMode&&dragMoved?autoTurnModuleToWall(dragMembers):false;const refreshTop=(dragMoved||wallTurned)&&!individualMode&&parts.some(p=>p.userData.type==='countertop');drag=null;dragMoved=false;dragMembers=[];dragObstacles=[];controls.enabled=true;if(selected)selectPart(selected,individualMode);if(refreshTop){const keep=selected,mode=individualMode;addCountertopWithCutouts();if(keep&&parts.includes(keep))selectPart(keep,mode)}}renderer.domElement.addEventListener('pointerup',stopDrag);renderer.domElement.addEventListener('pointercancel',stopDrag);
 window.addEventListener('keydown',e=>{if((e.key==='Delete'||e.key==='Backspace')&&!['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)){e.preventDefault();removeSelected()}if(e.key==='Shift')$('hint').textContent='Shift зажат: щёлкни по детали, чтобы выбрать её отдельно.'});
 function resize(){const w=stage.clientWidth,h=stage.clientHeight;if(!w||!h)return;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}new ResizeObserver(resize).observe(stage);window.addEventListener('resize',resize);function followDraggedCamera(){if(!drag||!dragMembers.length)return;camera.updateMatrixWorld(true);const box=new THREE.Box3();dragMembers.forEach(p=>{p.updateMatrixWorld(true);box.expandByObject(p)});const center=box.getCenter(new THREE.Vector3()),p=center.clone().project(camera),ex=Math.max(0,Math.abs(p.x)-.42),ey=Math.max(0,Math.abs(p.y)-.42);if(!ex&&!ey)return;const depth=camera.position.distanceTo(center),hh=depth*Math.tan(THREE.MathUtils.degToRad(camera.fov/2)),right=new THREE.Vector3(1,0,0).applyQuaternion(camera.quaternion).normalize(),up=new THREE.Vector3(0,1,0).applyQuaternion(camera.quaternion).normalize(),desired=right.multiplyScalar(THREE.MathUtils.clamp(p.x,-1.5,1.5)*ex*hh*(renderer.domElement.clientWidth/Math.max(1,renderer.domElement.clientHeight))*.55).add(up.multiplyScalar(THREE.MathUtils.clamp(p.y,-1.5,1.5)*ey*hh*.55)),shift=desired.multiplyScalar(.10);camera.position.add(shift);controls.target.add(shift);dragPlane.constant-=dragPlane.normal.dot(shift);dragPointerWorldStart.add(shift);dragPointerWorldCurrent.add(shift)}(function animate(){requestAnimationFrame(animate);updateCameraFocus();followDraggedCamera();controls.update();renderer.render(scene,camera)})();resize();$('status').textContent='● 3D ГОТОВ';refreshList();
 </script></body></html>
