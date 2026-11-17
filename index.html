@@ -293,11 +293,23 @@ function shiftKitchenRowAfterResize(moduleId,oldCenter,axis,oldWidth,newWidth){
   edge+=item.width;
  });
 }
+function setCountertopTextureScale(texture,widthMm=600,heightMm=600){
+ if(!texture)return;
+ const apply=()=>{
+  const image=texture.image,iw=image?.naturalWidth||image?.videoWidth||image?.width||0,ih=image?.naturalHeight||image?.videoHeight||image?.height||0;
+  const aspect=iw>0&&ih>0?iw/ih:1;
+  texture.repeat.set(Math.max(.001,widthMm/600),Math.max(.001,heightMm*aspect/600));
+  texture.needsUpdate=true;
+ };
+ apply();
+ const image=texture.image;
+ if(image&&!image.complete&&image.addEventListener)image.addEventListener('load',apply,{once:true});
+}
 function makeBacksplashMaterial(mesh){
  const key=mesh.userData.backsplashMaterial,material=new THREE.MeshStandardMaterial({color:'#e8e5dc',roughness:.78,metalness:0});
  if(typeof key==='string'&&key.startsWith('countertop_')){
   const source=getCountertopTexture(key.slice(11));
-  if(source){const texture=source.clone();texture.wrapS=THREE.RepeatWrapping;texture.wrapT=THREE.RepeatWrapping;texture.repeat.set(Math.max(.15,(mesh.userData.size?.w||600)/600),Math.max(.15,(mesh.userData.backsplashHeight||600)/600));texture.anisotropy=renderer.capabilities.getMaxAnisotropy();texture.needsUpdate=true;material.map=texture;material.color.set('#ffffff')}
+  if(source){const texture=source.clone();texture.wrapS=THREE.RepeatWrapping;texture.wrapT=THREE.RepeatWrapping;setCountertopTextureScale(texture,mesh.userData.size?.w||600,mesh.userData.backsplashHeight||600);texture.anisotropy=renderer.capabilities.getMaxAnisotropy();texture.needsUpdate=true;material.map=texture;material.color.set('#ffffff')}
  }
  return material;
 }
@@ -326,12 +338,12 @@ function applyCountertopDecor(mesh,key){
  if(!mesh||mesh.userData?.type!=='countertop')return;
  const size=mesh.userData.size||{w:600,h:38,d:600};
  const surfaceMat=makeMaterial(key,size);
- if(surfaceMat.map){surfaceMat.map.repeat.set(1,1);surfaceMat.map.center.set(.5,.5);surfaceMat.map.needsUpdate=true}
+ if(surfaceMat.map){setCountertopTextureScale(surfaceMat.map,600,600);surfaceMat.map.center.set(.5,.5)}
  mesh.material=surfaceMat;mesh.userData.material=key;
  mesh.children.forEach(child=>{
   if(child.userData?.countertopSurface){
    const childMat=makeMaterial(key,size);
-   if(childMat.map){childMat.map.center.set(.5,.5);childMat.map.needsUpdate=true}
+   if(childMat.map){setCountertopTextureScale(childMat.map,size.w||600,size.d||600);childMat.map.center.set(.5,.5)}
    child.material=childMat;
   }
  });
