@@ -419,7 +419,10 @@ function addCountertopWithCutouts(){
   geoUv.needsUpdate=true;
   const style=oldStyles[made.length]||{},surfaceKey=style.material||'stone';
   const stoneMat=makeMaterial(surfaceKey,{w:maxU-minU,h:38,d:countertopDepth});
-  if(stoneMat.map)stoneMat.map.repeat.set(1,1);
+  // Верх столешницы использует исходную картинку как повторяемую плитку:
+  // один фрагмент шириной 600 мм, высота рассчитывается строго по пропорциям файла.
+  // Никакого растягивания изображения под ширину или глубину столешницы.
+  if(stoneMat.map){stoneMat.map.wrapS=THREE.RepeatWrapping;stoneMat.map.wrapT=THREE.RepeatWrapping;setCountertopTextureScale(stoneMat.map,600,600);}
   const edgeMat=makeMaterial(surfaceKey,{w:maxU-minU,h:38,d:countertopDepth});
   const mesh=new THREE.Mesh(geo,stoneMat);
   // Скругление 10 мм по верхнему и нижнему ребру передней кромки.
