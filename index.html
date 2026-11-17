@@ -234,7 +234,10 @@ function placeNewModuleGroup(group,width,depth){
     const sideDir=sideA.dot(roomCenter.clone().sub(cc))>=sideB.dot(roomCenter.clone().sub(cc))?sideA:sideB;
     let minFront=Infinity,maxFront=-Infinity,minSide=Infinity;
     corner.forEach(p=>{const b=new THREE.Box3().setFromObject(p);for(const x of [b.min.x,b.max.x])for(const z of [b.min.z,b.max.z]){const v=new THREE.Vector3(x,0,z),f=v.dot(frontDir),q=v.dot(sideDir);minFront=Math.min(minFront,f);maxFront=Math.max(maxFront,f);minSide=Math.min(minSide,q)}});
-    const target=frontDir.clone().multiplyScalar(maxFront+width/2).add(sideDir.clone().multiplyScalar(minSide+depth/2)),angle=Math.atan2(-frontDir.z,frontDir.x);
+    const targetSide=minSide+depth/2;
+    const existingIds=[...new Set(parts.filter(p=>p.userData.moduleId!=null&&p.userData.moduleKind!=='corner'&&p.userData.moduleKind!=='upper'&&p.userData.type!=='countertop').map(p=>p.userData.moduleId))];
+    existingIds.forEach(mid=>{const g=parts.filter(p=>p.userData.moduleId===mid),l=g.find(p=>p.userData.name==='Боковина левая'),rr=g.find(p=>p.userData.name==='Боковина правая');if(!l||!rr)return;const axis=rr.position.clone().sub(l.position);axis.y=0;if(axis.lengthSq()<1)return;axis.normalize();if(Math.abs(axis.dot(frontDir))<.95)return;const b=new THREE.Box3();g.forEach(p=>b.expandByObject(p));const sideCenter=(b.min.x*sideDir.x+b.min.z*sideDir.z+b.max.x*sideDir.x+b.max.z*sideDir.z)/2;if(Math.abs(sideCenter-targetSide)>35)return;for(const x of [b.min.x,b.max.x])for(const z of [b.min.z,b.max.z])maxFront=Math.max(maxFront,new THREE.Vector3(x,0,z).dot(frontDir))});
+    const target=frontDir.clone().multiplyScalar(maxFront+width/2).add(sideDir.clone().multiplyScalar(targetSide)),angle=Math.atan2(-frontDir.z,frontDir.x);
     group.forEach(p=>{p.position.applyAxisAngle(new THREE.Vector3(0,1,0),angle);p.position.x+=target.x;p.position.z+=target.z;p.rotation.y+=angle;p.updateMatrixWorld(true)});
     return true;
    }
@@ -497,8 +500,10 @@ function addUpperCabinet(w=800,h=720,d=330){
  addPart('back','Задняя стенка ХДФ 3 мм (в паз)',innerW,innerH,3,x,bottomY+h/2,-d/2+12,'milk',3);
  buildingModuleId=null;
  const group=parts.filter(p=>p.userData.moduleId===id);
- placeNewModuleGroup(group,w,d);
+ const wallOffset=-3500+d/2+10;
  group.forEach(p=>{
+  p.position.x+=nextX;
+  p.position.z+=wallOffset;
   p.userData.moduleWidth=w;p.userData.moduleHeight=h;p.userData.moduleDepth=d;
   p.userData.moduleKind='upper';p.userData.autoWallTurn=0;
   p.updateMatrixWorld(true);
