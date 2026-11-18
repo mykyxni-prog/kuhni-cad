@@ -327,19 +327,24 @@ function isWoodCountertopDecor(key){
 }
 function setCountertopTextureScale(texture,widthMm=600,heightMm=600,key=''){
  if(!texture)return;
- // Древесный декор идёт одной непрерывной полосой на всю длину столешницы.
- // Камень/мрамор повторяется небольшими плитками по 300 мм.
- const wood=isWoodCountertopDecor(key),tileWidth=wood?Math.max(1,widthMm):300;
+ // Любой недревесный декор (мрамор, камень, бетон и т.п.) показываем
+ // ОДИН раз на всей плоскости столешницы — без плиток и повторов по 300 мм.
+ // Древесный декор сохраняет непрерывный рисунок по длине и пропорции исходника.
+ const wood=isWoodCountertopDecor(key);
  const apply=()=>{
   const image=texture.image,iw=image?.naturalWidth||image?.videoWidth||image?.width||0,ih=image?.naturalHeight||image?.videoHeight||image?.height||0;
   if(!(iw>0&&ih>0))return;
   const aspect=iw/ih;
-  texture.wrapS=THREE.RepeatWrapping;texture.wrapT=THREE.RepeatWrapping;
+  texture.wrapS=THREE.ClampToEdgeWrapping;texture.wrapT=THREE.ClampToEdgeWrapping;
   texture.offset.set(0,0);texture.center.set(0,0);texture.rotation=0;
-  // Геометрические UV уже выражены в долях от 600 мм.
-  // Поэтому repeat задаём в том же масштабе: U и V используют
-  // один физический размер плитки. Не умножаем V на глубину второй раз.
-  texture.repeat.set(600/tileWidth,600*aspect/tileWidth);
+  if(wood){
+   // Одна исходная полоса по всей длине; высота рассчитывается по пропорциям JPG.
+   texture.repeat.set(600/Math.max(1,widthMm),600*aspect/Math.max(1,widthMm));
+  }else{
+   // Вся исходная картинка ровно один раз покрывает всю столешницу:
+   // U — от левого до правого края, V — от заднего до переднего.
+   texture.repeat.set(600/Math.max(1,widthMm),600/Math.max(1,heightMm));
+  }
   texture.needsUpdate=true;
  };
  apply();
