@@ -380,17 +380,39 @@ function updateCountertopBacksplash(mesh,enabled,height=600){
  panel.name='Стеновая панель';
  mesh.add(panel);
 }
+function makeCountertopEdgeMaterial(surfaceMat,size={w:600,d:600},edgeRadius=10){
+ const sourceMap=surfaceMat?.map;
+ if(!sourceMap)return new THREE.MeshStandardMaterial({color:surfaceMat?.color||'#d8d5ce',roughness:.62,metalness:0});
+ const map=sourceMap.clone();
+ // Берём узкую полосу именно с переднего края верхней плоскости.
+ // Она продолжается на торец, поэтому рисунок не выглядит отдельной наклеенной картинкой.
+ const depth=Math.max(1,size.d||600),strip=Math.min(edgeRadius,depth);
+ map.wrapS=THREE.ClampToEdgeWrapping;map.wrapT=THREE.ClampToEdgeWrapping;
+ map.offset.set(0,(sourceMap.offset?.y||0)+(sourceMap.repeat?.y||1)*(depth-strip)/600);
+ map.repeat.set(1,(sourceMap.repeat?.y||1)*strip/600);
+ map.center.set(0,0);map.rotation=0;map.colorSpace=THREE.SRGBColorSpace;
+ map.anisotropy=renderer.capabilities.getMaxAnisotropy();map.needsUpdate=true;
+ return new THREE.MeshStandardMaterial({map,color:'#ffffff',roughness:.62,metalness:0});
+}
+function mapCountertopEdgeGeometry(geometry,length,radius){
+ const pos=geometry.attributes.position,uv=geometry.attributes.uv;
+ for(let i=0;i<pos.count;i++){
+  uv.setXY(i,(pos.getX(i)+length/2)/Math.max(1,length),Math.max(0,Math.min(1,(pos.getY(i)+radius)/(2*radius))));
+ }
+ uv.needsUpdate=true;
+}
 function applyCountertopDecor(mesh,key){
  if(!mesh||mesh.userData?.type!=='countertop')return;
  const size=mesh.userData.size||{w:600,h:38,d:600};
  const surfaceMat=makeMaterial(key,size);
  if(surfaceMat.map){setCountertopTextureScale(surfaceMat.map,size.w||600,size.d||600,key);surfaceMat.map.center.set(.5,.5)}
- mesh.material=surfaceMat;mesh.userData.material=key;
+ const oldSurface=mesh.material;mesh.material=surfaceMat;mesh.userData.material=key;
+ if(oldSurface&&oldSurface!==surfaceMat){oldSurface.map?.dispose?.();oldSurface.dispose?.()}
  mesh.children.forEach(child=>{
   if(child.userData?.countertopSurface){
-   const childMat=makeMaterial(key,size);
-   if(childMat.map){setCountertopTextureScale(childMat.map,size.w||600,size.d||600,key);childMat.map.center.set(.5,.5)}
-   child.material=childMat;
+   const old=child.material;
+   child.material=makeCountertopEdgeMaterial(surfaceMat,size,mesh.userData.edgeRadius||10);
+   if(old&&old!==child.material){old.map?.dispose?.();old.dispose?.()}
   }
  });
 }
@@ -469,37 +491,30 @@ function addCountertopWithCutouts(){
   // один фрагмент шириной 600 мм, высота рассчитывается строго по пропорциям файла.
   // Никакого растягивания изображения под ширину или глубину столешницы.
   if(stoneMat.map){stoneMat.map.wrapS=THREE.RepeatWrapping;stoneMat.map.wrapT=THREE.RepeatWrapping;setCountertopTextureScale(stoneMat.map,maxU-minU,countertopDepth,surfaceKey);}
-  const edgeSource=makeMaterial(surfaceKey,{w:maxU-minU,h:38,d:countertopDepth});
-  let edgeMat=edgeSource;
-  if(edgeSource.map){
-   // Передняя кромка должна освещаться как настоящий материал, а не выглядеть самосветящейся.
-   // Для узкой скруглённой поверхности используем отдельную копию той же фактуры.
-   const edgeMap=edgeSource.map;
-   edgeMap.wrapS=THREE.ClampToEdgeWrapping;edgeMap.wrapT=THREE.ClampToEdgeWrapping;
-   edgeMap.offset.set(0,0);edgeMap.center.set(0,0);edgeMap.rotation=0;edgeMap.repeat.set(1,1);
-   edgeMap.needsUpdate=true;
-   edgeMat=new THREE.MeshStandardMaterial({map:edgeMap,color:'#ffffff',roughness:.62,metalness:0});
-   edgeSource.dispose();
-  }
+  const edgeMat=makeCountertopEdgeMaterial(stoneMat,{w:maxU-minU,d:countertopDepth},edgeRadius);
   const mesh=new THREE.Mesh(geo,stoneMat);
   // Скругление 10 мм по верхнему и нижнему ребру передней кромки.
   // Вместе с кромкой общая глубина столешницы остаётся ровно 600 мм.
   const edgeLength=maxU-minU,edgeCenter=(minU+maxU)/2;
-  const edgeWeb=new THREE.Mesh(new THREE.BoxGeometry(edgeLength,38-2*edgeRadius,2*edgeRadius),edgeMat);
+  const edgeWebGeometry=new THREE.BoxGeometry(edgeLength,38-2*edgeRadius,2*edgeRadius);
+  mapCountertopEdgeGeometry(edgeWebGeometry,edgeLength,edgeRadius);
+  const edgeWeb=new THREE.Mesh(edgeWebGeometry,edgeMat);
   edgeWeb.userData.countertopSurface=true;
   edgeWeb.position.set(edgeCenter,19,maxV);
   mesh.add(edgeWeb);
   [edgeRadius,38-edgeRadius].forEach(y=>{
-   const roll=new THREE.Mesh(new THREE.CylinderGeometry(edgeRadius,edgeRadius,edgeLength,24,1,false),edgeMat);
+   const rollGeometry=new THREE.CylinderGeometry(edgeRadius,edgeRadius,edgeLength,24,1,false);
+   rollGeometry.rotateZ(Math.PI/2);
+   mapCountertopEdgeGeometry(rollGeometry,edgeLength,edgeRadius);
+   const roll=new THREE.Mesh(rollGeometry,edgeMat);
    roll.userData.countertopSurface=true;
-   roll.geometry.rotateZ(Math.PI/2);
    roll.position.set(edgeCenter,y,maxV);
    mesh.add(roll);
   });
   mesh.position.set(0,topY,0);
   mesh.rotation.y=-Math.atan2(row.u.z,row.u.x);
   cutouts.forEach(m=>{if(m.cooktop)addCooktopVisual(mesh,m.along,m.across);else if(m.sink||m.assignedSink)addSinkVisual(mesh,m.along,m.across)});
-  mesh.userData={partId:nextId++,moduleId:nextModuleId++,type:'countertop',name:'Столешница — ряд '+(made.length+1),size:{w:maxU-minU,h:38,d:countertopDepth},material:surfaceKey,thickness:38,cutouts:cutouts.map(m=>({moduleId:m.id,width:560,depth:480})),backsplashEnabled:!!style.backsplashEnabled,backsplashHeight:style.backsplashHeight||600,backsplashMaterial:style.backsplashMaterial||'',backsplashBackZ:minV,backsplashCenterU:edgeCenter};
+  mesh.userData={partId:nextId++,moduleId:nextModuleId++,type:'countertop',name:'Столешница — ряд '+(made.length+1),size:{w:maxU-minU,h:38,d:countertopDepth},edgeRadius,material:surfaceKey,thickness:38,cutouts:cutouts.map(m=>({moduleId:m.id,width:560,depth:480})),backsplashEnabled:!!style.backsplashEnabled,backsplashHeight:style.backsplashHeight||600,backsplashMaterial:style.backsplashMaterial||'',backsplashBackZ:minV,backsplashCenterU:edgeCenter};
   if(mesh.userData.backsplashEnabled)updateCountertopBacksplash(mesh,true,mesh.userData.backsplashHeight);
   model.add(mesh);parts.push(mesh);made.push(mesh);
  }
