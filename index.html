@@ -405,7 +405,7 @@ function applyCountertopDecor(mesh,key){
  if(!mesh||mesh.userData?.type!=='countertop')return;
  const size=mesh.userData.size||{w:600,h:38,d:600};
  const surfaceMat=makeMaterial(key,size);
- if(surfaceMat.map){setCountertopTextureScale(surfaceMat.map,size.w||600,size.d||600,key);surfaceMat.map.center.set(.5,.5)}
+ if(surfaceMat.map){setCountertopTextureScale(surfaceMat.map,size.w||600,size.d||600,key);surfaceMat.map.center.set(0,0)}
  const oldSurface=mesh.material;mesh.material=surfaceMat;mesh.userData.material=key;
  if(oldSurface&&oldSurface!==surfaceMat){oldSurface.map?.dispose?.();oldSurface.dispose?.()}
  mesh.children.forEach(child=>{
