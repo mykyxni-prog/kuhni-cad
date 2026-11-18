@@ -336,9 +336,10 @@ function setCountertopTextureScale(texture,widthMm=600,heightMm=600,key=''){
   const aspect=iw/ih;
   texture.wrapS=THREE.RepeatWrapping;texture.wrapT=THREE.RepeatWrapping;
   texture.offset.set(0,0);texture.center.set(0,0);texture.rotation=0;
-  // Геометрические UV размечены в масштабе 600 мм на единицу.
-  // Подбираем повтор так, чтобы исходные пропорции JPG не искажались.
-  texture.repeat.set(600/tileWidth,heightMm*aspect/tileWidth);
+  // Геометрические UV уже выражены в долях от 600 мм.
+  // Поэтому repeat задаём в том же масштабе: U и V используют
+  // один физический размер плитки. Не умножаем V на глубину второй раз.
+  texture.repeat.set(600/tileWidth,600*aspect/tileWidth);
   texture.needsUpdate=true;
  };
  apply();
