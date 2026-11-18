@@ -98,7 +98,7 @@ const kronoartColors=Object.fromEntries(kronoartDecors.map(d=>[d.key,d.color]));
 const contempoTextureData={};const contempoTextureCache={};const harmonyPlusTextureData={};const harmonyPlusTextureCache={};const countertopTextureData={};const countertopTextureCache={};let countertopDecors=[];
 function getContempoTexture(code){if(contempoTextureCache[code])return contempoTextureCache[code];const src=contempoTextureData[code];if(!src)return null;const image=new Image(),texture=new THREE.Texture(image);texture.colorSpace=THREE.SRGBColorSpace;image.onload=()=>{texture.needsUpdate=true};image.src=src;contempoTextureCache[code]=texture;return texture}
 function getHarmonyPlusTexture(code){if(harmonyPlusTextureCache[code])return harmonyPlusTextureCache[code];const src=harmonyPlusTextureData[code];if(!src)return null;const image=new Image(),texture=new THREE.Texture(image);texture.colorSpace=THREE.SRGBColorSpace;image.onload=()=>{texture.needsUpdate=true};image.src=src;harmonyPlusTextureCache[code]=texture;return texture}
-function getCountertopTexture(code){if(countertopTextureCache[code])return countertopTextureCache[code];const src=countertopTextureData[code];if(!src)return null;const image=new Image(),texture=new THREE.Texture(image);texture.colorSpace=THREE.SRGBColorSpace;image.onload=()=>{texture.needsUpdate=true};image.src=src;countertopTextureCache[code]=texture;return texture}
+function getCountertopTexture(code){if(countertopTextureCache[code])return countertopTextureCache[code];const src=countertopTextureData[code];if(!src)return null;const image=new Image(),texture=new THREE.Texture(image);texture.colorSpace=THREE.SRGBColorSpace;texture.generateMipmaps=true;texture.magFilter=THREE.LinearFilter;texture.minFilter=THREE.LinearMipmapLinearFilter;texture.anisotropy=renderer.capabilities.getMaxAnisotropy();image.onload=()=>{texture.needsUpdate=true};image.src=src;countertopTextureCache[code]=texture;return texture}
 function makeMaterial(key,size={w:600,h:900,d:600},partName=''){
  let material=new THREE.MeshStandardMaterial({color:colors[key]||colors.oak,roughness:.78,metalness:0}),source=null;
  const isCountertop=typeof key==='string'&&key.startsWith('countertop_');
@@ -469,7 +469,18 @@ function addCountertopWithCutouts(){
   // один фрагмент шириной 600 мм, высота рассчитывается строго по пропорциям файла.
   // Никакого растягивания изображения под ширину или глубину столешницы.
   if(stoneMat.map){stoneMat.map.wrapS=THREE.RepeatWrapping;stoneMat.map.wrapT=THREE.RepeatWrapping;setCountertopTextureScale(stoneMat.map,maxU-minU,countertopDepth,surfaceKey);}
-  const edgeMat=makeMaterial(surfaceKey,{w:maxU-minU,h:38,d:countertopDepth});
+  const edgeSource=makeMaterial(surfaceKey,{w:maxU-minU,h:38,d:countertopDepth});
+  let edgeMat=edgeSource;
+  if(edgeSource.map){
+   // Передняя кромка должна освещаться как настоящий материал, а не выглядеть самосветящейся.
+   // Для узкой скруглённой поверхности используем отдельную копию той же фактуры.
+   const edgeMap=edgeSource.map;
+   edgeMap.wrapS=THREE.ClampToEdgeWrapping;edgeMap.wrapT=THREE.ClampToEdgeWrapping;
+   edgeMap.offset.set(0,0);edgeMap.center.set(0,0);edgeMap.rotation=0;edgeMap.repeat.set(1,1);
+   edgeMap.needsUpdate=true;
+   edgeMat=new THREE.MeshStandardMaterial({map:edgeMap,color:'#ffffff',roughness:.62,metalness:0});
+   edgeSource.dispose();
+  }
   const mesh=new THREE.Mesh(geo,stoneMat);
   // Скругление 10 мм по верхнему и нижнему ребру передней кромки.
   // Вместе с кромкой общая глубина столешницы остаётся ровно 600 мм.
