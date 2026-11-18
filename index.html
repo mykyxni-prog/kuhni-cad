@@ -320,18 +320,25 @@ function shiftKitchenRowAfterResize(moduleId,oldCenter,axis,oldWidth,newWidth){
   edge+=item.width;
  });
 }
-function setCountertopTextureScale(texture,widthMm=600,heightMm=600){
+function isWoodCountertopDecor(key){
+ const id=String(key||'').replace(/^countertop_/,'');
+ const label=String(countertopDecors.find(d=>String(d.id)===id)?.label||'').toLowerCase();
+ return /(дуб|сосна|ясен|орех|бук|ольх|венге|дерев|лиственниц|акаци|тик|палисандр|кл[её]н|сандал|груша)/i.test(label);
+}
+function setCountertopTextureScale(texture,widthMm=600,heightMm=600,key=''){
  if(!texture)return;
- // Файл декора — готовая полноразмерная текстура. На столешнице повторяем
- // исходный прямоугольник без растяжения: его ширина равна 600 мм,
- // высота определяется только исходными пропорциями JPG.
+ // Древесный декор идёт одной непрерывной полосой на всю длину столешницы.
+ // Камень/мрамор повторяется небольшими плитками по 300 мм.
+ const wood=isWoodCountertopDecor(key),tileWidth=wood?Math.max(1,widthMm):300;
  const apply=()=>{
   const image=texture.image,iw=image?.naturalWidth||image?.videoWidth||image?.width||0,ih=image?.naturalHeight||image?.videoHeight||image?.height||0;
   if(!(iw>0&&ih>0))return;
   const aspect=iw/ih;
   texture.wrapS=THREE.RepeatWrapping;texture.wrapT=THREE.RepeatWrapping;
   texture.offset.set(0,0);texture.center.set(0,0);texture.rotation=0;
-  texture.repeat.set(Math.max(.001,widthMm/600),Math.max(.001,heightMm*aspect/600));
+  // Геометрические UV размечены в масштабе 600 мм на единицу.
+  // Подбираем повтор так, чтобы исходные пропорции JPG не искажались.
+  texture.repeat.set(600/tileWidth,heightMm*aspect/tileWidth);
   texture.needsUpdate=true;
  };
  apply();
@@ -342,7 +349,7 @@ function makeBacksplashMaterial(mesh){
  const key=mesh.userData.backsplashMaterial,material=new THREE.MeshStandardMaterial({color:'#e8e5dc',roughness:.78,metalness:0});
  if(typeof key==='string'&&key.startsWith('countertop_')){
   const source=getCountertopTexture(key.slice(11));
-  if(source){const texture=source.clone();texture.wrapS=THREE.RepeatWrapping;texture.wrapT=THREE.RepeatWrapping;setCountertopTextureScale(texture,mesh.userData.size?.w||600,mesh.userData.backsplashHeight||600);texture.anisotropy=renderer.capabilities.getMaxAnisotropy();texture.needsUpdate=true;material.map=texture;material.color.set('#ffffff')}
+  if(source){const texture=source.clone();texture.wrapS=THREE.RepeatWrapping;texture.wrapT=THREE.RepeatWrapping;setCountertopTextureScale(texture,mesh.userData.size?.w||600,mesh.userData.backsplashHeight||600,key);texture.anisotropy=renderer.capabilities.getMaxAnisotropy();texture.needsUpdate=true;material.map=texture;material.color.set('#ffffff')}
  }
  return material;
 }
@@ -371,12 +378,12 @@ function applyCountertopDecor(mesh,key){
  if(!mesh||mesh.userData?.type!=='countertop')return;
  const size=mesh.userData.size||{w:600,h:38,d:600};
  const surfaceMat=makeMaterial(key,size);
- if(surfaceMat.map){setCountertopTextureScale(surfaceMat.map,600,600);surfaceMat.map.center.set(.5,.5)}
+ if(surfaceMat.map){setCountertopTextureScale(surfaceMat.map,size.w||600,size.d||600,key);surfaceMat.map.center.set(.5,.5)}
  mesh.material=surfaceMat;mesh.userData.material=key;
  mesh.children.forEach(child=>{
   if(child.userData?.countertopSurface){
    const childMat=makeMaterial(key,size);
-   if(childMat.map){setCountertopTextureScale(childMat.map,size.w||600,size.d||600);childMat.map.center.set(.5,.5)}
+   if(childMat.map){setCountertopTextureScale(childMat.map,size.w||600,size.d||600,key);childMat.map.center.set(.5,.5)}
    child.material=childMat;
   }
  });
@@ -455,7 +462,7 @@ function addCountertopWithCutouts(){
   // Верх столешницы использует исходную картинку как повторяемую плитку:
   // один фрагмент шириной 600 мм, высота рассчитывается строго по пропорциям файла.
   // Никакого растягивания изображения под ширину или глубину столешницы.
-  if(stoneMat.map){stoneMat.map.wrapS=THREE.RepeatWrapping;stoneMat.map.wrapT=THREE.RepeatWrapping;setCountertopTextureScale(stoneMat.map,600,600);}
+  if(stoneMat.map){stoneMat.map.wrapS=THREE.RepeatWrapping;stoneMat.map.wrapT=THREE.RepeatWrapping;setCountertopTextureScale(stoneMat.map,maxU-minU,countertopDepth,surfaceKey);}
   const edgeMat=makeMaterial(surfaceKey,{w:maxU-minU,h:38,d:countertopDepth});
   const mesh=new THREE.Mesh(geo,stoneMat);
   // Скругление 10 мм по верхнему и нижнему ребру передней кромки.
