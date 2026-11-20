@@ -423,16 +423,7 @@ function makeBacksplashMaterial(mesh){
  const key=mesh.userData.backsplashMaterial,material=new THREE.MeshStandardMaterial({color:'#e8e5dc',roughness:.78,metalness:0});
  if(typeof key==='string'&&key.startsWith('countertop_')){
   const source=getCountertopTexture(key.slice(11));
-  if(source){
-   const texture=source.clone(),width=mesh.userData.backsplashRange?mesh.userData.backsplashRange.end-mesh.userData.backsplashRange.start:(mesh.userData.size?.w||600),height=mesh.userData.backsplashHeight||600;
-   const image=texture.image,iw=image?.naturalWidth||image?.videoWidth||image?.width||1,ih=image?.naturalHeight||image?.videoHeight||image?.height||1,aspect=iw/ih;
-   texture.wrapS=THREE.RepeatWrapping;texture.wrapT=THREE.RepeatWrapping;
-   // Масштаб задаётся в миллиметрах: одинаковый размер рисунка на короткой и длинной панели.
-   const wood=isWoodCountertopDecor(key);
-   texture.repeat.set(width/600,wood?height*aspect/600:height/600);
-   texture.offset.set(0,0);texture.center.set(0,0);texture.rotation=0;
-   texture.anisotropy=renderer.capabilities.getMaxAnisotropy();texture.needsUpdate=true;material.map=texture;material.color.set('#ffffff');
-  }
+  if(source){const texture=source.clone();texture.wrapS=THREE.RepeatWrapping;texture.wrapT=THREE.RepeatWrapping;setCountertopTextureScale(texture,mesh.userData.size?.w||600,mesh.userData.backsplashHeight||600,key);texture.anisotropy=renderer.capabilities.getMaxAnisotropy();texture.needsUpdate=true;material.map=texture;material.color.set('#ffffff')}
  }
  return material;
 }
@@ -449,8 +440,7 @@ function updateCountertopBacksplash(mesh,enabled,height=600){
  mesh.userData.backsplashEnabled=!!enabled;
  mesh.userData.backsplashHeight=Math.max(100,Math.min(1200,Math.round(Number(height)||600)));
  if(!enabled)return;
- const range=mesh.userData.backsplashRange||{start:-(mesh.userData.size?.w||600)/2,end:(mesh.userData.size?.w||600)/2};
- const width=Math.max(1,range.end-range.start),h=mesh.userData.backsplashHeight,thickness=16,backZ=mesh.userData.backsplashBackZ,centerU=(range.start+range.end)/2;
+ const width=mesh.userData.size?.w||600,h=mesh.userData.backsplashHeight,thickness=16,backZ=mesh.userData.backsplashBackZ,centerU=mesh.userData.backsplashCenterU||0;
  if(!Number.isFinite(backZ))return;
  const panel=new THREE.Mesh(new THREE.BoxGeometry(width,h,thickness),makeBacksplashMaterial(mesh));
  panel.position.set(centerU,38+h/2,backZ+thickness/2);
@@ -609,29 +599,11 @@ function addCountertopWithCutouts(){
   mesh.position.set(0,topY,0);
   mesh.rotation.y=-Math.atan2(row.u.z,row.u.x);
   cutouts.forEach(m=>{if(m.cooktop)addCooktopVisual(mesh,m.along,m.across);else if(m.sink||m.assignedSink)addSinkVisual(mesh,m.along,m.across)});
-  mesh.userData={partId:nextId++,moduleId:nextModuleId++,type:'countertop',name:'Столешница — ряд '+(made.length+1),size:{w:maxU-minU,h:38,d:countertopDepth},edgeRadius,material:surfaceKey,thickness:38,cutouts:cutouts.map(m=>({moduleId:m.id,width:560,depth:480})),backsplashEnabled:!!style.backsplashEnabled,backsplashHeight:style.backsplashHeight||600,backsplashMaterial:style.backsplashMaterial||'',backsplashBackZ:minV,backsplashCenterU:edgeCenter,backsplashRange:{start:minU,end:maxU},backsplashFrame:{ux:row.u.x,uz:row.u.z,vx:row.v.x,vz:row.v.z,across:minV,depth:countertopDepth-edgeRadius}};
+  mesh.userData={partId:nextId++,moduleId:nextModuleId++,type:'countertop',name:'Столешница — ряд '+(made.length+1),size:{w:maxU-minU,h:38,d:countertopDepth},edgeRadius,material:surfaceKey,thickness:38,cutouts:cutouts.map(m=>({moduleId:m.id,width:560,depth:480})),backsplashEnabled:!!style.backsplashEnabled,backsplashHeight:style.backsplashHeight||600,backsplashMaterial:style.backsplashMaterial||'',backsplashBackZ:minV,backsplashCenterU:edgeCenter};
   if(mesh.userData.backsplashEnabled)updateCountertopBacksplash(mesh,true,mesh.userData.backsplashHeight);
   model.add(mesh);parts.push(mesh);made.push(mesh);
  }
  if(!made.length){$('hint').textContent='Не удалось определить ряды нижних модулей.';return}
- // В углу продлеваем короткую стеновую панель до плоскости соседней столешницы.
- // Так панели сходятся без пустого промежутка, но не перекрывают друг друга.
- made.forEach(mesh=>{
-  const frame=mesh.userData.backsplashFrame,range=mesh.userData.backsplashRange;
-  if(!frame||!range||!mesh.userData.backsplashEnabled)return;
-  const u={x:frame.ux,z:frame.uz},v={x:frame.vx,z:frame.vz};
-  made.forEach(other=>{
-   if(other===mesh)return;
-   const of=other.userData.backsplashFrame,orr=other.userData.backsplashRange;
-   if(!of||!orr||Math.abs(u.x*of.ux+u.z*of.uz)>.15)return;
-   const corners=[[orr.start,of.across],[orr.start,of.across+of.depth],[orr.end,of.across],[orr.end,of.across+of.depth]];
-   const projected=corners.map(([a,b])=>{const x=of.ux*a+of.vx*b,z=of.uz*a+of.vz*b;return x*u.x+z*u.z});
-   const lo=Math.min(...projected),hi=Math.max(...projected);
-   if(lo<range.start+2&&hi>range.start)range.start=Math.min(range.start,lo);
-   if(hi>range.end-2&&lo<range.end)range.end=Math.max(range.end,hi);
-  });
- });
- made.forEach(mesh=>{if(mesh.userData.backsplashEnabled)updateCountertopBacksplash(mesh,true,mesh.userData.backsplashHeight)});
  selectPart(made[0],true);refreshList();
  $('hint').textContent='Столешница установлена отдельными участками по рядам модулей: '+made.length+'. Пустое пространство внутри угла не заполняется.';
 }
