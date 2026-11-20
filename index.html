@@ -1020,7 +1020,12 @@ function syncModuleFacades(moduleId){
  const oldSize=box.getSize(new THREE.Vector3()),center=box.getCenter(new THREE.Vector3());
  const oldModuleWidth=body.find(p=>Number.isFinite(p.userData.moduleWidth))?.userData.moduleWidth||Math.round(orientation?oldSize.z:oldSize.x);
  const oldModuleCenter=new THREE.Vector3((leftSide.position.x+rightSide.position.x)/2,0,(leftSide.position.z+rightSide.position.z)/2);
- const rowAxis=new THREE.Vector3(sideDX,0,sideDZ).normalize();
+ let rowAxis=new THREE.Vector3(sideDX,0,sideDZ).normalize();
+ // На левой стене направление ряда всегда идёт от угла комнаты вперёд (+Z).
+ // Имена боковин после поворота дают обратный вектор, поэтому разворачиваем ось,
+ // чтобы при изменении ширины ближний к угловому шкафу край оставался на месте,
+ // а все следующие модули сдвигались без зазоров.
+ if(body.some(p=>p.userData.placementWall==='left'||p.userData.autoWallTurn===1)&&rowAxis.z<0)rowAxis.negate();
  const hadCountertop=parts.some(p=>p.userData.type==='countertop');
  const target={x:Math.max(1,+$('moduleW').value||0),y:Math.max(1,+$('moduleH').value||0),z:Math.max(1,+$('moduleD').value||0)};
  if(!$('moduleW').value)target.x=Math.round(orientation?oldSize.z:oldSize.x);
