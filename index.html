@@ -299,7 +299,7 @@ function placeModuleOnSelectedWall(group,width,depth,options={}){
     const cabinetParts=g.filter(p=>p.userData.type!=='leg'&&p.userData.type!=='hinge');
     const cb=new THREE.Box3();cabinetParts.forEach(p=>{p.updateMatrixWorld(true);cb.expandByObject(p)});
     if(Number.isFinite(cb.max.x)&&Math.abs(cb.min.z-roomBack)<Math.max(120,(g[0].userData.moduleDepth||520)*0.35)){
-     startZ=Math.max(startZ,roomBack+(cb.max.x-roomLeft));
+     startZ=Math.max(startZ,cb.max.z,roomBack+(cb.max.x-roomLeft));
     }
    }
    const b=getLeftWallBounds(g);if(b)startZ=Math.max(startZ,b.max.z);
