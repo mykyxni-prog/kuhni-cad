@@ -262,13 +262,27 @@ function placeModuleOnSelectedWall(group,width,depth,options={}){
   return false;
  }
  const existingIds=[...new Set(parts.filter(p=>p.userData.moduleId!=null&&p.userData.moduleId!==moduleId&&p.userData.type!=='countertop').map(p=>p.userData.moduleId))];
+ // Учитываем не только модули, созданные после появления переключателя,
+ // но и тумбы, которые пользователь уже поставил или передвинул к левой стене.
+ function getLeftWallBounds(g){
+  if(!g.length)return null;
+  const b=new THREE.Box3();g.forEach(p=>{p.updateMatrixWorld(true);b.expandByObject(p)});
+  if(g.some(p=>p.userData.placementWall==='left'||p.userData.autoWallTurn===1))return b;
+  const size=b.getSize(new THREE.Vector3());
+  const center=b.getCenter(new THREE.Vector3());
+  const expectedDepth=Math.max(...g.map(p=>p.userData.moduleDepth||0),depth);
+  const touchesLeft=Math.abs(b.min.x-roomLeft)<=90;
+  const runsAlongWall=size.z>size.x+25;
+  const sitsAtLeftWall=center.x<=roomLeft+expectedDepth/2+100;
+  return touchesLeft&&runsAlongWall&&sitsAtLeftWall?b:null;
+ }
  let startZ=roomBack;
  if(upper){
   let firstLowerZ=Infinity,upperEndZ=-Infinity;
   existingIds.forEach(id=>{
    const g=parts.filter(p=>p.userData.moduleId===id);
-   if(!g.length||!g.some(p=>p.userData.placementWall==='left'||p.userData.autoWallTurn===1))return;
-   const b=new THREE.Box3();g.forEach(p=>b.expandByObject(p));
+   if(!g.length)return;
+   const b=getLeftWallBounds(g);if(!b)return;
    if(g.some(p=>p.userData.moduleKind==='upper'))upperEndZ=Math.max(upperEndZ,b.max.z);
    else firstLowerZ=Math.min(firstLowerZ,b.min.z);
   });
@@ -277,8 +291,8 @@ function placeModuleOnSelectedWall(group,width,depth,options={}){
  }else{
   existingIds.forEach(id=>{
    const g=parts.filter(p=>p.userData.moduleId===id);
-   if(!g.length||g.some(p=>p.userData.moduleKind==='upper')||!g.some(p=>p.userData.placementWall==='left'||p.userData.autoWallTurn===1))return;
-   const b=new THREE.Box3();g.forEach(p=>b.expandByObject(p));
+   if(!g.length||g.some(p=>p.userData.moduleKind==='upper'))return;
+   const b=getLeftWallBounds(g);if(!b)return;
    startZ=Math.max(startZ,b.max.z);
   });
  }
