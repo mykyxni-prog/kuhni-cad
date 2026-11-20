@@ -526,6 +526,24 @@ function addCountertopWithCutouts(){
   const minV=Math.max(moduleBack-40,wallBoundary+2),maxV=minV+countertopDepth-edgeRadius,topY=Math.max(...row.items.map(m=>m.top));
   const shape=new THREE.Shape();
   shape.moveTo(minU,-minV);shape.lineTo(maxU,-minV);shape.lineTo(maxU,-maxV);shape.lineTo(minU,-maxV);shape.closePath();
+  // Перпендикулярные ряды не должны занимать одну и ту же площадь в углу.
+  // Оставляем ранее построенную плиту цельной, а из следующей вырезаем только
+  // реальную площадь пересечения двух прямоугольных столешниц.
+  const rowIndex=rows.indexOf(row);
+  for(let ri=0;ri<rowIndex;ri++){
+   const prev=rows[ri],prevUs=prev.items.map(m=>m.along),prevHalf=prev.items.map(m=>m.w/2);
+   const prevMinU=Math.min(...prevUs.map((u,i)=>u-prevHalf[i])),prevMaxU=Math.max(...prevUs.map((u,i)=>u+prevHalf[i]));
+   if(Math.abs(row.u.x*prev.u.x+row.u.z*prev.u.z)>.15)continue;
+   const prevBack=prev.across-prev.depth/2,prevWall=Math.abs(prev.v.x)>.985?(prev.v.x>0?roomLeft:-roomRight):(prev.v.z>0?roomBack:-roomFront);
+   const prevMinV=Math.max(prevBack-40,prevWall+2),prevMaxV=prevMinV+countertopDepth-edgeRadius;
+   const corners=[[prevMinU,prevMinV],[prevMinU,prevMaxV],[prevMaxU,prevMinV],[prevMaxU,prevMaxV]];
+   const projected=corners.map(([u,v])=>({along:(prev.u.x*u+prev.v.x*v)*row.u.x+(prev.u.z*u+prev.v.z*v)*row.u.z,across:(prev.u.x*u+prev.v.x*v)*row.v.x+(prev.u.z*u+prev.v.z*v)*row.v.z}));
+   const cutMinU=Math.max(minU,Math.min(...projected.map(p=>p.along))),cutMaxU=Math.min(maxU,Math.max(...projected.map(p=>p.along)));
+   const cutMinV=Math.max(minV,Math.min(...projected.map(p=>p.across))),cutMaxV=Math.min(maxV,Math.max(...projected.map(p=>p.across)));
+   if(cutMaxU-cutMinU>1&&cutMaxV-cutMinV>1){
+    const joint=new THREE.Path();joint.moveTo(cutMinU,-cutMinV);joint.lineTo(cutMinU,-cutMaxV);joint.lineTo(cutMaxU,-cutMaxV);joint.lineTo(cutMaxU,-cutMinV);joint.closePath();shape.holes.push(joint);
+   }
+  }
   const cutouts=row.items.filter(m=>m.oven||m.sink||m.cooktop||m.assignedSink);
   cutouts.forEach(m=>{
    const width=560,depth=480,left=m.along-width/2,right=m.along+width/2,front=m.across-depth/2,back=m.across+depth/2;
