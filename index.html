@@ -1038,7 +1038,7 @@ function resizeCornerModuleWidth(moduleId,targetW,targetH,targetD,oldWidth,oldCe
  const previousBuildingModuleId=buildingModuleId;buildingModuleId=moduleId;
  try{
   const facade=addPart('facade','Фасад',Math.max(1,targetW-603),targetH-3,16,facadeCenter.x,bottomY+(targetH-3)/2,facadeCenter.z,'milk',16);
-  facade.rotation.y=angle;facade.userData.autoWallTurn=orientation;
+  facade.rotation.y=angle;facade.userData.autoWallTurn=orientation;facade.userData.moduleWidth=targetW;facade.userData.moduleHeight=targetH;facade.userData.moduleDepth=targetD;facade.userData.moduleKind='corner';
   if(appearance?.material){
    if(Array.isArray(facade.material))facade.material.forEach(m=>m?.dispose());else facade.material?.dispose();
    facade.material=Array.isArray(appearance.material)?appearance.material.map(m=>m?.clone()):appearance.material.clone();
