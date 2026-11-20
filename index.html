@@ -318,6 +318,7 @@ function placeModuleOnSelectedWall(group,width,depth,options={}){
  group.forEach(p=>{p.position.add(shift);p.userData.placementWall='left';p.userData.autoWallTurn=1;p.updateMatrixWorld(true)});
  return true;
 }
+// Начало ряда у задней стены учитывает зеркальный угловой модуль в левом заднем углу.
 function getNextModuleX(width){
  // Ряд у задней стены начинается после фактического края углового модуля.
  // Обычные модули левой стены не учитываем, но зеркальный угловой модуль
