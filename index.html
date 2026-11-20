@@ -289,11 +289,20 @@ function placeModuleOnSelectedWall(group,width,depth,options={}){
   if(Number.isFinite(upperEndZ))startZ=upperEndZ;
   else if(Number.isFinite(firstLowerZ))startZ=firstLowerZ;
  }else{
+  // Если угловой модуль уже стоит вдоль правой (задней) стены,
+  // левый ряд должен начинаться за его фактическим угловым габаритом,
+  // а не из угла комнаты: иначе новая тумба входит в угловой модуль.
   existingIds.forEach(id=>{
    const g=parts.filter(p=>p.userData.moduleId===id);
    if(!g.length||g.some(p=>p.userData.moduleKind==='upper'))return;
-   const b=getLeftWallBounds(g);if(!b)return;
-   startZ=Math.max(startZ,b.max.z);
+   if(g.some(p=>p.userData.moduleKind==='corner')&&g.some(p=>p.userData.placementWall!=='left'&&p.userData.autoWallTurn!==1)){
+    const cabinetParts=g.filter(p=>p.userData.type!=='leg'&&p.userData.type!=='hinge');
+    const cb=new THREE.Box3();cabinetParts.forEach(p=>{p.updateMatrixWorld(true);cb.expandByObject(p)});
+    if(Number.isFinite(cb.max.x)&&Math.abs(cb.min.z-roomBack)<Math.max(120,(g[0].userData.moduleDepth||520)*0.35)){
+     startZ=Math.max(startZ,roomBack+(cb.max.x-roomLeft));
+    }
+   }
+   const b=getLeftWallBounds(g);if(b)startZ=Math.max(startZ,b.max.z);
   });
  }
  const before=new THREE.Box3();group.forEach(p=>before.expandByObject(p));
