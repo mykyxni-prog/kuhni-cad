@@ -981,7 +981,84 @@ function syncModuleFacades(moduleId){
    if(cornerHinge)mesh.userData.cornerHingeSide=cornerHinge.userData.sideSign===1?1:-1;
   }
  }finally{buildingModuleId=previousBuildingModuleId}
-}function applyModuleDimensions(){
+}
+function resizeCornerModuleWidth(moduleId,targetW,targetH,targetD,oldWidth,oldCenter,rowAxis,hadCountertop){
+ const group=parts.filter(p=>p.userData.moduleId===moduleId);
+ const left=group.find(p=>p.userData.name==='Боковина левая'),right=group.find(p=>p.userData.name==='Боковина правая');
+ if(!left||!right)return false;
+ const delta=targetW-oldWidth,axis=rowAxis.clone().normalize();
+ // Сдвигаем соседний ряд по новой ширине, но сам угловой модуль возвращаем
+ // на место: его левая сторона и фальшпанели остаются неподвижными.
+ if(Math.abs(delta)>0.5){
+  shiftKitchenRowAfterResize(moduleId,oldCenter,axis,oldWidth,targetW);
+  const undo=axis.clone().multiplyScalar(-delta/2);
+  group.forEach(p=>{p.position.add(undo);p.updateMatrixWorld(true)});
+ }
+ const anchor=left.position.clone(),bottomY=left.position.y-left.userData.size.h/2;
+ const orientation=Math.abs(axis.z)>Math.abs(axis.x)?1:0,angle=orientation*Math.PI/2;
+ const center=anchor.clone().add(axis.clone().multiplyScalar((targetW-16)/2));
+ const setBox=(p,w,h,d)=>{
+  if(!p)return;
+  p.userData.size={...p.userData.size,w,h,d};
+  p.geometry.dispose();p.geometry=new THREE.BoxGeometry(w,h,d);p.updateMatrixWorld(true);
+ };
+ // Корпус растёт только в сторону фасадной части.
+ right.position.copy(anchor).add(axis.clone().multiplyScalar(targetW-16));
+ right.position.y=bottomY+16+(targetH-16)/2;
+ setBox(left,16,targetH-16,targetD);
+ setBox(right,16,targetH-16,targetD);
+ left.position.y=right.position.y=bottomY+16+(targetH-16)/2;
+ const bottom=group.find(p=>p.userData.name==='Дно накладное');
+ setBox(bottom,targetW,16,targetD);
+ if(bottom)bottom.position.set(center.x,bottomY+8,center.z);
+ const shelf=group.find(p=>p.userData.name==='Полка');
+ setBox(shelf,targetW-32,16,targetD-5);
+ if(shelf)shelf.position.set(center.x,shelf.position.y,center.z);
+ const back=group.find(p=>p.userData.name==='Задняя стенка');
+ setBox(back,targetW-3,targetH-3,4);
+ const backOffset=new THREE.Vector3(0,0,-targetD/2+2).applyAxisAngle(new THREE.Vector3(0,1,0),angle);
+ if(back)back.position.set(center.x+backOffset.x,bottomY+(targetH-3)/2,center.z+backOffset.z);
+ // Правые опоры перемещаются вместе с новой боковиной, левые остаются на месте.
+ group.filter(p=>String(p.userData.name||'').startsWith('Опора Volpato 31')).forEach(p=>{
+  const along=p.position.clone().sub(anchor).dot(axis);
+  if(along>oldWidth/2)p.position.add(axis.clone().multiplyScalar(delta));
+  p.updateMatrixWorld(true);
+ });
+ const oldFacade=group.find(p=>p.userData.type==='facade');
+ let appearance=null;
+ if(oldFacade){
+  appearance={
+   material:Array.isArray(oldFacade.material)?oldFacade.material.map(m=>m?.clone()):oldFacade.material?.clone(),
+   data:{material:oldFacade.userData.material,customColor:oldFacade.userData.customColor,facadeName:oldFacade.userData.facadeName,facadeStyle:oldFacade.userData.facadeStyle,cornerHingeSide:oldFacade.userData.cornerHingeSide}
+  };
+  model.remove(oldFacade);oldFacade.geometry.dispose();const index=parts.indexOf(oldFacade);if(index>=0)parts.splice(index,1);
+ }
+ const front=new THREE.Vector3(0,0,targetD/2+8).applyAxisAngle(new THREE.Vector3(0,1,0),angle);
+ const facadeCenter=anchor.clone().add(axis.clone().multiplyScalar(targetW/2+292)).add(front);
+ const previousBuildingModuleId=buildingModuleId;buildingModuleId=moduleId;
+ try{
+  const facade=addPart('facade','Фасад',Math.max(1,targetW-603),targetH-3,16,facadeCenter.x,bottomY+(targetH-3)/2,facadeCenter.z,'milk',16);
+  facade.rotation.y=angle;facade.userData.autoWallTurn=orientation;
+  if(appearance?.material){
+   if(Array.isArray(facade.material))facade.material.forEach(m=>m?.dispose());else facade.material?.dispose();
+   facade.material=Array.isArray(appearance.material)?appearance.material.map(m=>m?.clone()):appearance.material.clone();
+   Object.assign(facade.userData,appearance.data);
+  }
+  const cornerHinge=group.find(p=>p.userData.cornerHinge);
+  if(cornerHinge)facade.userData.cornerHingeSide=cornerHinge.userData.sideSign===1?1:-1;
+ }finally{buildingModuleId=previousBuildingModuleId}
+ group.forEach(p=>{
+  p.userData.moduleWidth=targetW;p.userData.moduleHeight=targetH;p.userData.moduleDepth=targetD;
+  p.userData.moduleKind='corner';p.userData.autoWallTurn=orientation;p.updateMatrixWorld(true);
+ });
+ if(hadCountertop)addCountertopWithCutouts();
+ selectPart(parts.find(p=>p.userData.moduleId===moduleId&&p.userData.name==='Боковина левая')||left,false);
+ refreshList();updateHandles();
+ $('moduleW').value=targetW;
+ $('hint').textContent='Угловой модуль изменён: фальшпанели сохранены, размер изменилась только фасадная часть.';
+ return true;
+}
+function applyModuleDimensions(){
  if(!selected||individualMode)return;
  const moduleId=selected.userData.moduleId;
  const drawerGroup=parts.filter(p=>p.userData.moduleId===moduleId);
@@ -1060,6 +1137,13 @@ function syncModuleFacades(moduleId){
  if(!$('moduleW').value)target.x=Math.round(orientation?oldSize.z:oldSize.x);
  if(!$('moduleH').value)target.y=Math.round(oldSize.y);
  if(!$('moduleD').value)target.z=Math.round(orientation?oldSize.x:oldSize.z);
+ const isCorner=body.some(p=>p.userData.moduleKind==='corner');
+ const storedHeight=body.find(p=>Number.isFinite(p.userData.moduleHeight))?.userData.moduleHeight||Math.round(oldSize.y);
+ const storedDepth=body.find(p=>Number.isFinite(p.userData.moduleDepth))?.userData.moduleDepth||Math.round(orientation?oldSize.x:oldSize.z);
+ if(isCorner&&target.y===storedHeight&&target.z===storedDepth){
+  target.x=Math.max(650,target.x);
+  if(resizeCornerModuleWidth(moduleId,target.x,target.y,target.z,oldModuleWidth,oldModuleCenter,rowAxis,hadCountertop))return;
+ }
  const localScale={x:target.x/(orientation?oldSize.z:oldSize.x),y:target.y/oldSize.y,z:target.z/(orientation?oldSize.x:oldSize.z)};
  const worldScale={x:orientation?localScale.z:localScale.x,y:localScale.y,z:orientation?localScale.x:localScale.z};
  [...oldFacades,...oldHinges].forEach(p=>{model.remove(p);const i=parts.indexOf(p);if(i>=0)parts.splice(i,1);if(p.geometry)p.geometry.dispose()});
