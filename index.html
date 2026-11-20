@@ -264,14 +264,16 @@ function placeModuleOnSelectedWall(group,width,depth,options={}){
  const existingIds=[...new Set(parts.filter(p=>p.userData.moduleId!=null&&p.userData.moduleId!==moduleId&&p.userData.type!=='countertop').map(p=>p.userData.moduleId))];
  let startZ=roomBack;
  if(upper){
-  let firstLowerZ=Infinity;
+  let firstLowerZ=Infinity,upperEndZ=-Infinity;
   existingIds.forEach(id=>{
    const g=parts.filter(p=>p.userData.moduleId===id);
-   if(!g.length||g.some(p=>p.userData.moduleKind==='upper')||!g.some(p=>p.userData.placementWall==='left'||p.userData.autoWallTurn===1))return;
+   if(!g.length||!g.some(p=>p.userData.placementWall==='left'||p.userData.autoWallTurn===1))return;
    const b=new THREE.Box3();g.forEach(p=>b.expandByObject(p));
-   firstLowerZ=Math.min(firstLowerZ,b.min.z);
+   if(g.some(p=>p.userData.moduleKind==='upper'))upperEndZ=Math.max(upperEndZ,b.max.z);
+   else firstLowerZ=Math.min(firstLowerZ,b.min.z);
   });
-  if(Number.isFinite(firstLowerZ))startZ=firstLowerZ;
+  if(Number.isFinite(upperEndZ))startZ=upperEndZ;
+  else if(Number.isFinite(firstLowerZ))startZ=firstLowerZ;
  }else{
   existingIds.forEach(id=>{
    const g=parts.filter(p=>p.userData.moduleId===id);
@@ -562,7 +564,7 @@ addPart('panel','Наружная планка фасадная 720×24',16,h,24
 addPart('panel','Наружная планка корпусная 720×24',16,h,24,-w/2+24+8,legsH+h/2,frontZ+16,'oak',16);
 addPart('facade','Фасад',447,h-3,16,-w/2+400+200+450/2,legsH+(h-3)/2,frontZ,'milk',16);
 for(const lx of [-w/2+55,w/2-55])for(const lz of [-d/2+55,d/2-55]){addRoundPart('Опора Volpato 31 — основание',48,10,lx,5,lz,'graphite');addRoundPart('Опора Volpato 31 — стойка',28,82,lx,51,lz,'graphite');addPart('leg','Опора Volpato 31 — верхнее крепление',46,8,46,lx,96,lz,'graphite',8)}
-buildingModuleId=null;const group=parts.filter(p=>p.userData.moduleId===id);group.forEach(p=>{p.position.x+=nextX;p.updateMatrixWorld(true);p.userData.moduleWidth=w;p.userData.moduleHeight=h;p.userData.moduleDepth=d;p.userData.moduleKind='corner'});const wallOffset=-3500+d/2;group.forEach(p=>{p.position.z+=wallOffset;p.updateMatrixWorld(true)});const hingePanel=group.find(p=>p.userData.name==='Фальшпанель 200');if(hingePanel){const hingeX=hingePanel.position.x+hingePanel.userData.size.w/2+8;[bottomY+110,bottomY+h/2+35,bottomY+h-110].forEach(hy=>{const hinge=addFirmaxHinge(id,hingeX,hingePanel.position.z,hy,-1,true);hinge.userData.cornerHinge=true})}const bounds=new THREE.Box3();group.forEach(p=>bounds.expandByObject(p));const center=bounds.getCenter(new THREE.Vector3()),viewOffset=camera.position.clone().sub(controls.target).normalize().multiplyScalar(2600);controls.target.copy(center);camera.position.copy(center).add(viewOffset);controls.update();selectPart(group.find(p=>p.userData.type!=='leg'),false);$('hint').textContent='Угловой модуль 1050 мм добавлен: фальшпанели 400 и 200 мм, проём 450 мм, фасад 447 мм.'}
+buildingModuleId=null;const group=parts.filter(p=>p.userData.moduleId===id);group.forEach(p=>{p.position.x+=nextX;p.updateMatrixWorld(true);p.userData.moduleWidth=w;p.userData.moduleHeight=h;p.userData.moduleDepth=d;p.userData.moduleKind='corner';p.userData.placementWall='right';p.userData.autoWallTurn=0});const wallOffset=-3500+d/2;group.forEach(p=>{p.position.z+=wallOffset;p.updateMatrixWorld(true)});const hingePanel=group.find(p=>p.userData.name==='Фальшпанель 200');if(hingePanel){const hingeX=hingePanel.position.x+hingePanel.userData.size.w/2+8;[bottomY+110,bottomY+h/2+35,bottomY+h-110].forEach(hy=>{const hinge=addFirmaxHinge(id,hingeX,hingePanel.position.z,hy,-1,true);hinge.userData.cornerHinge=true})}const bounds=new THREE.Box3();group.forEach(p=>bounds.expandByObject(p));const center=bounds.getCenter(new THREE.Vector3()),viewOffset=camera.position.clone().sub(controls.target).normalize().multiplyScalar(2600);controls.target.copy(center);camera.position.copy(center).add(viewOffset);controls.update();selectPart(group.find(p=>p.userData.type!=='leg'),false);$('hint').textContent='Угловой модуль 1050 мм добавлен: фальшпанели 400 и 200 мм, проём 450 мм, фасад 447 мм.'}
 function addCornerMirror(){
  addCornerStraight();
  const id=selectedModuleId,group=parts.filter(p=>p.userData.moduleId===id);
@@ -588,6 +590,7 @@ function addCornerMirror(){
   p.position.x=targetCenter.x+x*cos+z*sin;
   p.position.z=targetCenter.z-x*sin+z*cos;
   p.rotation.y+=turn;
+  p.userData.placementWall='left';p.userData.autoWallTurn=1;
   p.updateMatrixWorld(true);
  });
  model.updateMatrixWorld(true);
@@ -1200,7 +1203,7 @@ function autoTurnModuleToWall(members){
   });
   return false;
  }
- members.forEach(p=>{p.userData.autoWallTurn=desired});
+ members.forEach(p=>{p.userData.autoWallTurn=desired;p.userData.placementWall=desired===1?'left':'right'});
  return true;
 }
 renderer.domElement.addEventListener('pointermove',e=>{const rect=renderer.domElement.getBoundingClientRect();pointer.x=((e.clientX-rect.left)/rect.width)*2-1;pointer.y=-((e.clientY-rect.top)/rect.height)*2+1;raycaster.setFromCamera(pointer,camera);
