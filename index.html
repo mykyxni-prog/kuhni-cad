@@ -254,27 +254,55 @@ function addSinkVisual(countertop,x,z){
  const lever=new THREE.Mesh(new THREE.BoxGeometry(7,48,7),steel);lever.position.set(24,169,-252);lever.rotation.z=-.22;group.add(lever);
  countertop.add(group);
 }
+function placeModuleOnSelectedWall(group,width,depth,options={}){
+ if(!group||!group.length)return false;
+ const moduleId=group[0].userData.moduleId,upper=!!options.upper;
+ if(newModuleWallSide!=='left'){
+  group.forEach(p=>{p.userData.placementWall='right';p.userData.autoWallTurn=0});
+  return false;
+ }
+ const existingIds=[...new Set(parts.filter(p=>p.userData.moduleId!=null&&p.userData.moduleId!==moduleId&&p.userData.type!=='countertop').map(p=>p.userData.moduleId))];
+ let startZ=roomBack;
+ if(upper){
+  let firstLowerZ=Infinity;
+  existingIds.forEach(id=>{
+   const g=parts.filter(p=>p.userData.moduleId===id);
+   if(!g.length||g.some(p=>p.userData.moduleKind==='upper')||!g.some(p=>p.userData.placementWall==='left'||p.userData.autoWallTurn===1))return;
+   const b=new THREE.Box3();g.forEach(p=>b.expandByObject(p));
+   firstLowerZ=Math.min(firstLowerZ,b.min.z);
+  });
+  if(Number.isFinite(firstLowerZ))startZ=firstLowerZ;
+ }else{
+  existingIds.forEach(id=>{
+   const g=parts.filter(p=>p.userData.moduleId===id);
+   if(!g.length||g.some(p=>p.userData.moduleKind==='upper')||!g.some(p=>p.userData.placementWall==='left'||p.userData.autoWallTurn===1))return;
+   const b=new THREE.Box3();g.forEach(p=>b.expandByObject(p));
+   startZ=Math.max(startZ,b.max.z);
+  });
+ }
+ const before=new THREE.Box3();group.forEach(p=>before.expandByObject(p));
+ const center=before.getCenter(new THREE.Vector3()),angle=Math.PI/2,axis=new THREE.Vector3(0,1,0);
+ group.forEach(p=>{p.position.sub(center).applyAxisAngle(axis,angle).add(center);p.rotateY(angle);p.updateMatrixWorld(true)});
+ const after=new THREE.Box3();group.forEach(p=>after.expandByObject(p));
+ const afterCenter=after.getCenter(new THREE.Vector3());
+ const shift=new THREE.Vector3(roomLeft+depth/2-afterCenter.x,0,startZ+width/2-afterCenter.z);
+ group.forEach(p=>{p.position.add(shift);p.userData.placementWall='left';p.userData.autoWallTurn=1;p.updateMatrixWorld(true)});
+ return true;
+}
 function getNextModuleX(width){
- // Обычные модули считаем по боковинам корпуса.
- // У углового модуля учитываем фальшпанели и наружные планки:
- // после зеркального поворота они выступают дальше корпуса по X.
+ // Считаем только ряд у задней стены. Модули левой стены не сдвигают его.
  let maxX=-Infinity;
  const ids=new Set(parts.filter(p=>p.userData.moduleId!=null&&p.userData.type!=='countertop'&&p.userData.moduleKind!=='upper').map(p=>p.userData.moduleId));
  for(const id of ids){
   const group=parts.filter(p=>p.userData.moduleId===id);
+  if(!group.length||group.some(p=>p.userData.placementWall==='left'||p.userData.autoWallTurn===1))continue;
   const left=group.find(p=>p.userData.name==='Боковина левая'),right=group.find(p=>p.userData.name==='Боковина правая');
   if(!left||!right)continue;
   const bounds=new THREE.Box3();
-  if(group.some(p=>p.userData.moduleKind==='corner')){
-   group.filter(p=>p.userData.type!=='leg'&&p.userData.type!=='hinge').forEach(p=>bounds.expandByObject(p));
-  }else{
-   bounds.expandByObject(left);
-   bounds.expandByObject(right);
-  }
-  const edge=bounds.max.x;
-  if(Number.isFinite(edge))maxX=Math.max(maxX,edge);
+  if(group.some(p=>p.userData.moduleKind==='corner'))group.filter(p=>p.userData.type!=='leg'&&p.userData.type!=='hinge').forEach(p=>bounds.expandByObject(p));
+  else{bounds.expandByObject(left);bounds.expandByObject(right)}
+  if(Number.isFinite(bounds.max.x))maxX=Math.max(maxX,bounds.max.x);
  }
- // Следующий модуль начинается за самой выступающей частью углового узла.
  return Number.isFinite(maxX)?maxX+width/2:roomLeft+width/2;
 }
 function shiftKitchenRowAfterResize(moduleId,oldCenter,axis,oldWidth,newWidth){
@@ -606,8 +634,8 @@ function addCabinetHinges(moduleId,w,h,d,bottomY){
  if(w<=600){ys.forEach(y=>addAt(-w/2+8,d/2-2,y,1))}
  else{ys.forEach(y=>{addAt(-w/2+8,d/2-2,y,1);addAt(w/2-8,d/2-2,y,-1)})}
 }
-function addCabinet(w=800,h=720,d=520,doors=false,withLegs=false,withShelf=true,kind='standard'){captureUndoSnapshot();const t=16,legsH=withLegs?100:0,sideH=h-t,nextX=getNextModuleX(w);buildingModuleId=nextModuleId++;const x=0,z=0,bottomY=legsH,sideY=bottomY+t+sideH/2,topY=bottomY+h,innerW=w-2*t;addPart('panel','Боковина левая',t,sideH,d,x-w/2+t/2,sideY,z,'oak',t);addPart('panel','Боковина правая',t,sideH,d,x+w/2-t/2,sideY,z,'oak',t);addPart('panel','Дно накладное',w,t,d,x,bottomY+t/2,z,'oak',t);if(withShelf)addPart('shelf','Полка',innerW,t,d-5,x,bottomY+t+sideH/2,z,'oak',t);if(kind==='oven'){const drawerFrontH=h-600-3,dividerTopY=topY-600;addPart('shelf','Полка под духовку',innerW,t,d,x,dividerTopY-t/2,z,'oak',t);addPart('panel','Фасад ящика',w-3,drawerFrontH,16,x,bottomY+drawerFrontH/2,d/2+8,'milk',16);const boxW=innerW-24,boxD=Math.min(450,d-70),boxH=70,boxZ=d/2-16-boxD/2,boxY=bottomY+16+boxH/2;addPart('panel','Боковина ящика левая',12,boxH,boxD,x-boxW/2+6,boxY,boxZ,'oak',12);addPart('panel','Боковина ящика правая',12,boxH,boxD,x+boxW/2-6,boxY,boxZ,'oak',12);addPart('panel','Задняя стенка ящика',boxW-24,boxH,12,x,boxY,boxZ-boxD/2+6,'oak',12);addPart('panel','Дно ящика',boxW-24,12,boxD,x,bottomY+16+6,boxZ,'oak',12)}else if(kind==='sink'){const railHeight=80;addPart('panel','Переднее вертикальное усиление',innerW,railHeight,t,x,topY-railHeight/2,d/2-t/2,'oak',t)}else{const railH=t,railD=100;addPart('panel','Верхнее усиление переднее',innerW,railH,railD,x,topY-railH/2,d/2-railD/2,'oak',t);addPart('panel','Верхнее усиление заднее',innerW,railH,railD,x,topY-railH/2,-d/2+railD/2,'oak',t);addPart('back','Задняя стенка',w-3,h-3,4,x,bottomY+(h-3)/2,-d/2+2,'milk',4)}if(withLegs){for(const lx of [-w/2+55,w/2-55])for(const lz of [-d/2+55,d/2-55]){addRoundPart('Опора Volpato 31 — основание',48,10,lx,5,lz,'graphite');addRoundPart('Опора Volpato 31 — стойка',28,82,lx,51,lz,'graphite');addPart('leg','Опора Volpato 31 — верхнее крепление',46,8,46,lx,96,lz,'graphite',8)}}const id=buildingModuleId;buildingModuleId=null;const last=parts.filter(p=>p.userData.moduleId===id);if(last.length){const wallOffset=-3500+d/2;last.forEach(p=>{p.position.x+=nextX;p.position.z+=wallOffset;p.updateMatrixWorld(true)});const bounds=new THREE.Box3();last.forEach(p=>bounds.expandByObject(p));last.forEach(p=>{p.userData.moduleWidth=w;p.userData.moduleHeight=h;p.userData.moduleDepth=d});addCabinetHinges(id,w,h,d,bottomY);if(doors)syncModuleFacades(id);const center=bounds.getCenter(new THREE.Vector3());const viewOffset=camera.position.clone().sub(controls.target).normalize().multiplyScalar(2600);controls.target.copy(center);camera.position.copy(center).add(viewOffset);controls.update();selectPart(last[0],false)}}
-function addUpperCabinet(w=800,h=720,d=330){
+function addCabinet(w=800,h=720,d=520,doors=false,withLegs=false,withShelf=true,kind='standard'){captureUndoSnapshot();const t=16,legsH=withLegs?100:0,sideH=h-t,nextX=getNextModuleX(w);buildingModuleId=nextModuleId++;const x=0,z=0,bottomY=legsH,sideY=bottomY+t+sideH/2,topY=bottomY+h,innerW=w-2*t;addPart('panel','Боковина левая',t,sideH,d,x-w/2+t/2,sideY,z,'oak',t);addPart('panel','Боковина правая',t,sideH,d,x+w/2-t/2,sideY,z,'oak',t);addPart('panel','Дно накладное',w,t,d,x,bottomY+t/2,z,'oak',t);if(withShelf)addPart('shelf','Полка',innerW,t,d-5,x,bottomY+t+sideH/2,z,'oak',t);if(kind==='oven'){const drawerFrontH=h-600-3,dividerTopY=topY-600;addPart('shelf','Полка под духовку',innerW,t,d,x,dividerTopY-t/2,z,'oak',t);addPart('panel','Фасад ящика',w-3,drawerFrontH,16,x,bottomY+drawerFrontH/2,d/2+8,'milk',16);const boxW=innerW-24,boxD=Math.min(450,d-70),boxH=70,boxZ=d/2-16-boxD/2,boxY=bottomY+16+boxH/2;addPart('panel','Боковина ящика левая',12,boxH,boxD,x-boxW/2+6,boxY,boxZ,'oak',12);addPart('panel','Боковина ящика правая',12,boxH,boxD,x+boxW/2-6,boxY,boxZ,'oak',12);addPart('panel','Задняя стенка ящика',boxW-24,boxH,12,x,boxY,boxZ-boxD/2+6,'oak',12);addPart('panel','Дно ящика',boxW-24,12,boxD,x,bottomY+16+6,boxZ,'oak',12)}else if(kind==='sink'){const railHeight=80;addPart('panel','Переднее вертикальное усиление',innerW,railHeight,t,x,topY-railHeight/2,d/2-t/2,'oak',t)}else{const railH=t,railD=100;addPart('panel','Верхнее усиление переднее',innerW,railH,railD,x,topY-railH/2,d/2-railD/2,'oak',t);addPart('panel','Верхнее усиление заднее',innerW,railH,railD,x,topY-railH/2,-d/2+railD/2,'oak',t);addPart('back','Задняя стенка',w-3,h-3,4,x,bottomY+(h-3)/2,-d/2+2,'milk',4)}if(withLegs){for(const lx of [-w/2+55,w/2-55])for(const lz of [-d/2+55,d/2-55]){addRoundPart('Опора Volpato 31 — основание',48,10,lx,5,lz,'graphite');addRoundPart('Опора Volpato 31 — стойка',28,82,lx,51,lz,'graphite');addPart('leg','Опора Volpato 31 — верхнее крепление',46,8,46,lx,96,lz,'graphite',8)}}const id=buildingModuleId;buildingModuleId=null;const last=parts.filter(p=>p.userData.moduleId===id);if(last.length){const wallOffset=-3500+d/2;last.forEach(p=>{p.position.x+=nextX;p.position.z+=wallOffset;p.userData.moduleWidth=w;p.userData.moduleHeight=h;p.userData.moduleDepth=d;p.updateMatrixWorld(true)});addCabinetHinges(id,w,h,d,bottomY);if(doors)syncModuleFacades(id);const complete=parts.filter(p=>p.userData.moduleId===id);placeModuleOnSelectedWall(complete,w,d);const bounds=new THREE.Box3();complete.forEach(p=>bounds.expandByObject(p));const center=bounds.getCenter(new THREE.Vector3());const viewOffset=camera.position.clone().sub(controls.target).normalize().multiplyScalar(2600);controls.target.copy(center);camera.position.copy(center).add(viewOffset);controls.update();selectPart(complete[0],false)}}
+function addUpperCabinet(w=800,h=720,d=330,deferWallPlacement=false){
  captureUndoSnapshot();
  const t=16,bottomY=1460,innerW=w-2*t,innerH=h-2*t;
  // Верхний ряд начинается строго над первым нижним модулем, а не после последнего.
@@ -639,6 +667,7 @@ function addUpperCabinet(w=800,h=720,d=330){
  addCabinetHinges(id,w,h,d,bottomY);
  syncModuleFacades(id);
  const complete=parts.filter(p=>p.userData.moduleId===id);
+ if(!deferWallPlacement)placeModuleOnSelectedWall(complete,w,d,{upper:true});
  const bounds=new THREE.Box3();complete.forEach(p=>bounds.expandByObject(p));
  const center=bounds.getCenter(new THREE.Vector3()),viewOffset=camera.position.clone().sub(controls.target).normalize().multiplyScalar(2600);
  controls.target.copy(center);camera.position.copy(center).add(viewOffset);controls.update();
@@ -647,7 +676,7 @@ function addUpperCabinet(w=800,h=720,d=330){
 }
 
 function addDishDryer(w=800,h=720,d=330){
- addUpperCabinet(w,h,d);
+ addUpperCabinet(w,h,d,true);
  if(!selected)return;
  const moduleId=selected.userData.moduleId,group=parts.filter(p=>p.userData.moduleId===moduleId);
  const left=group.find(p=>p.userData.name==='Боковина левая'),right=group.find(p=>p.userData.name==='Боковина правая');
@@ -711,6 +740,7 @@ function addDishDryer(w=800,h=720,d=330){
  for(const x of [xL+8,xR-8])for(const z of [zB+8,zF-8]){
   addRod('Опора верхней корзины',[x,cupY-20,z],[x,cupY,z],3,steelDark);
  }
+ placeModuleOnSelectedWall(parts.filter(p=>p.userData.moduleId===moduleId),w,d,{upper:true});
  refreshList();
  selectPart(parts.find(p=>p.userData.moduleId===moduleId&&p.userData.name==='Боковина левая')||group[0],false);
  $('hint').textContent='Установлена двухъярусная хромированная сушка: корзина для тарелок, верхняя решётка для чашек и съёмный поддон.';
@@ -765,8 +795,9 @@ async function addRefrigerator(){
    mesh.userData={partId:nextId++,moduleId,type:'hardware',name:item.name==='Элемент холодильника'?(index===0?'Холодильник — корпус':'Холодильник — деталь '+(index+1)):item.name,size:{w:dim.x,h:dim.y,d:dim.z},material:'appliance',thickness:0,moduleWidth:targetW,moduleHeight:targetH,moduleDepth:targetD,moduleKind:'appliance',applianceModule:true,modelAssetUrl:url};
    model.add(mesh);parts.push(mesh);
   });
-  const group=parts.filter(p=>p.userData.moduleId===moduleId),box=new THREE.Box3();
-  group.forEach(p=>box.expandByObject(p));
+  const group=parts.filter(p=>p.userData.moduleId===moduleId);
+  placeModuleOnSelectedWall(group,targetW,targetD);
+  const box=new THREE.Box3();group.forEach(p=>box.expandByObject(p));
   const actual=box.getSize(new THREE.Vector3());
   const centerScene=box.getCenter(new THREE.Vector3()),viewOffset=camera.position.clone().sub(controls.target).normalize().multiplyScalar(2600);
   controls.target.copy(centerScene);camera.position.copy(centerScene).add(viewOffset);controls.update();
@@ -815,6 +846,7 @@ function addDrawerCabinet(variant){
  const group=parts.filter(p=>p.userData.moduleId===id),wallOffset=-3500+d/2;
  group.forEach(p=>{p.position.x+=nextX;p.position.z+=wallOffset;p.userData.moduleWidth=w;p.userData.moduleHeight=h;p.userData.moduleDepth=d;p.userData.drawerModule=true;p.userData.drawerVariant=variant;p.updateMatrixWorld(true)});
  group.filter(p=>p.userData.drawerId).forEach(p=>{p.userData.drawerDepth=built.dimensions.drawerDepth});
+ placeModuleOnSelectedWall(group,w,d);
  const bounds=new THREE.Box3();group.forEach(p=>bounds.expandByObject(p));
  const center=bounds.getCenter(new THREE.Vector3()),viewOffset=camera.position.clone().sub(controls.target).normalize().multiplyScalar(2600);
  controls.target.copy(center);camera.position.copy(center).add(viewOffset);controls.update();
