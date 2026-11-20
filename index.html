@@ -319,17 +319,27 @@ function placeModuleOnSelectedWall(group,width,depth,options={}){
  return true;
 }
 function getNextModuleX(width){
- // Считаем только ряд у задней стены. Модули левой стены не сдвигают его.
+ // Ряд у задней стены начинается после фактического края углового модуля.
+ // Обычные модули левой стены не учитываем, но зеркальный угловой модуль
+ // стоит одновременно у левой и задней стен и задаёт начало правого ряда.
  let maxX=-Infinity;
  const ids=new Set(parts.filter(p=>p.userData.moduleId!=null&&p.userData.type!=='countertop'&&p.userData.moduleKind!=='upper').map(p=>p.userData.moduleId));
  for(const id of ids){
   const group=parts.filter(p=>p.userData.moduleId===id);
-  if(!group.length||group.some(p=>p.userData.placementWall==='left'||p.userData.autoWallTurn===1))continue;
+  if(!group.length)continue;
+  const isCorner=group.some(p=>p.userData.moduleKind==='corner');
+  const isLeftWall=group.some(p=>p.userData.placementWall==='left'||p.userData.autoWallTurn===1);
+  if(isLeftWall&&!isCorner)continue;
   const left=group.find(p=>p.userData.name==='Боковина левая'),right=group.find(p=>p.userData.name==='Боковина правая');
   if(!left||!right)continue;
   const bounds=new THREE.Box3();
-  if(group.some(p=>p.userData.moduleKind==='corner'))group.filter(p=>p.userData.type!=='leg'&&p.userData.type!=='hinge').forEach(p=>bounds.expandByObject(p));
-  else{bounds.expandByObject(left);bounds.expandByObject(right)}
+  if(isCorner)group.filter(p=>p.userData.type!=='leg'&&p.userData.type!=='hinge').forEach(p=>{p.updateMatrixWorld(true);bounds.expandByObject(p)});
+  else{left.updateMatrixWorld(true);right.updateMatrixWorld(true);bounds.expandByObject(left);bounds.expandByObject(right)}
+  // Зеркальный угловой шкаф учитываем только если он действительно стоит
+  // в левом заднем углу; отдельный ряд вдоль левой стены не должен влиять.
+  if(isLeftWall&&isCorner){
+   if(Math.abs(bounds.min.x-roomLeft)>120||Math.abs(bounds.min.z-roomBack)>120)continue;
+  }
   if(Number.isFinite(bounds.max.x))maxX=Math.max(maxX,bounds.max.x);
  }
  return Number.isFinite(maxX)?maxX+width/2:roomLeft+width/2;
