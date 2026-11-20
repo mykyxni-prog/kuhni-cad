@@ -994,7 +994,9 @@ function resizeCornerModuleWidth(moduleId,targetW,targetH,targetD,oldWidth,oldCe
   const undo=axis.clone().multiplyScalar(-delta/2);
   group.forEach(p=>{p.position.add(undo);p.updateMatrixWorld(true)});
  }
- const anchor=left.position.clone(),bottomY=left.position.y-left.userData.size.h/2;
+ // Нижняя кромка боковины находится на верхней плоскости дна (+16 мм).
+ // Ножки доходят до низа дна, поэтому учитываем толщину дна при расчёте базы.
+ const anchor=left.position.clone(),bottomY=left.position.y-left.userData.size.h/2-16;
  const orientation=Math.abs(axis.z)>Math.abs(axis.x)?1:0,angle=orientation*Math.PI/2;
  const center=anchor.clone().add(axis.clone().multiplyScalar((targetW-16)/2));
  const setBox=(p,w,h,d)=>{
@@ -1018,6 +1020,9 @@ function resizeCornerModuleWidth(moduleId,targetW,targetH,targetD,oldWidth,oldCe
  setBox(back,targetW-3,targetH-3,4);
  const backOffset=new THREE.Vector3(0,0,-targetD/2+2).applyAxisAngle(new THREE.Vector3(0,1,0),angle);
  if(back)back.position.set(center.x+backOffset.x,bottomY+(targetH-3)/2,center.z+backOffset.z);
+ // Фальшпанели и наружные планки выставляем от общей нижней плоскости корпуса.
+ group.filter(p=>['Фальшпанель 400','Фальшпанель 200','Наружная планка фасадная 720×24','Наружная планка корпусная 720×24'].includes(p.userData.name))
+  .forEach(p=>{p.position.y=bottomY+targetH/2;p.updateMatrixWorld(true)});
  // Правые опоры перемещаются вместе с новой боковиной, левые остаются на месте.
  group.filter(p=>String(p.userData.name||'').startsWith('Опора Volpato 31')).forEach(p=>{
   const along=p.position.clone().sub(anchor).dot(axis);
