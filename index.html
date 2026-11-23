@@ -492,10 +492,6 @@ function applyCountertopDecor(mesh,key){
    mesh.remove(topImage);topImage.geometry.dispose();
   }
   oldTop?.map?.dispose?.();oldTop?.dispose?.();
- }else if(surfaceMat.map){
-  const width=size.w||600,depth=size.d||600;
-  const topGeometry=new THREE.ShapeGeometry(mesh.geometry.parameters?.shapes||new THREE.Shape());
-  topGeometry.dispose();
  }
  mesh.children.forEach(child=>{
   if(child.userData?.countertopSurface){
