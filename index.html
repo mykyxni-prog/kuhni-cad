@@ -423,7 +423,7 @@ function makeBacksplashMaterial(mesh){
  const key=mesh.userData.backsplashMaterial,material=new THREE.MeshStandardMaterial({color:'#e8e5dc',roughness:.78,metalness:0});
  if(typeof key==='string'&&key.startsWith('countertop_')){
   const source=getCountertopTexture(key.slice(11));
-  if(source){const texture=source.clone();texture.wrapS=THREE.RepeatWrapping;texture.wrapT=THREE.RepeatWrapping;setCountertopTextureScale(texture,mesh.userData.size?.w||600,mesh.userData.backsplashHeight||600,key);texture.anisotropy=renderer.capabilities.getMaxAnisotropy();texture.needsUpdate=true;material.map=texture;material.color.set('#ffffff')}
+  if(source){const texture=source.clone();texture.wrapS=THREE.RepeatWrapping;texture.wrapT=THREE.RepeatWrapping;setCountertopTextureScale(texture,mesh.userData.size?.w||600,mesh.userData.backsplashHeight||600,key);texture.generateMipmaps=false;texture.minFilter=THREE.LinearFilter;texture.magFilter=THREE.LinearFilter;texture.anisotropy=1;texture.needsUpdate=true;material.map=texture;material.color.set('#ffffff')}
  }
  return material;
 }
