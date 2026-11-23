@@ -420,23 +420,29 @@ function setCountertopTextureScale(texture,widthMm=600,heightMm=600,key=''){
  if(image&&image.addEventListener)image.addEventListener('load',apply,{once:true});
 }
 function makeBacksplashMaterial(mesh){
- const key=mesh.userData.backsplashMaterial,material=new THREE.MeshStandardMaterial({color:'#e8e5dc',roughness:.78,metalness:0});
+ const key=mesh.userData.backsplashMaterial;
  if(typeof key==='string'&&key.startsWith('countertop_')){
-  const source=getCountertopTexture(key.slice(11));
-  if(source){const texture=source.clone();texture.wrapS=THREE.RepeatWrapping;texture.wrapT=THREE.RepeatWrapping;setCountertopTextureScale(texture,mesh.userData.size?.w||600,mesh.userData.backsplashHeight||600,key);texture.generateMipmaps=false;texture.minFilter=THREE.LinearFilter;texture.magFilter=THREE.LinearFilter;texture.anisotropy=1;texture.needsUpdate=true;material.map=texture;material.color.set('#ffffff')}
+  const texture=getCountertopTexture(key.slice(11));
+  if(texture){
+   // Повторно используем уже загруженную текстуру: не клонируем её и не запускаем
+   // вторую загрузку изображения в GPU при каждом включении стеновой панели.
+   const material=new THREE.MeshBasicMaterial({map:texture,color:'#ffffff',toneMapped:false});
+   material.userData.sharedCountertopTexture=true;
+   return material;
+  }
  }
- return material;
+ return new THREE.MeshBasicMaterial({color:'#e8e5dc',toneMapped:false});
 }
 function applyBacksplashDecor(mesh,key){
  if(!mesh||mesh.userData?.type!=='countertop')return;
  mesh.userData.backsplashMaterial=key;
  const panel=mesh.children.find(c=>c.userData?.countertopBacksplash);
- if(panel){const old=panel.material;panel.material=makeBacksplashMaterial(mesh);old?.map?.dispose?.();old?.dispose?.()}
+ if(panel){const old=panel.material;panel.material=makeBacksplashMaterial(mesh);if(!old?.userData?.sharedCountertopTexture)old?.map?.dispose?.();old?.dispose?.()}
 }
 function updateCountertopBacksplash(mesh,enabled,height=600){
  if(!mesh||mesh.userData?.type!=='countertop')return;
  const old=mesh.children.filter(c=>c.userData?.countertopBacksplash);
- old.forEach(c=>{mesh.remove(c);c.geometry?.dispose();if(Array.isArray(c.material))c.material.forEach(m=>m?.dispose());else{c.material?.map?.dispose?.();c.material?.dispose?.()}});
+ old.forEach(c=>{mesh.remove(c);c.geometry?.dispose();if(Array.isArray(c.material))c.material.forEach(m=>{if(!m?.userData?.sharedCountertopTexture)m?.map?.dispose?.();m?.dispose?.()});else{if(!c.material?.userData?.sharedCountertopTexture)c.material?.map?.dispose?.();c.material?.dispose?.()}});
  mesh.userData.backsplashEnabled=!!enabled;
  mesh.userData.backsplashHeight=Math.max(100,Math.min(1200,Math.round(Number(height)||600)));
  if(!enabled)return;
@@ -525,19 +531,44 @@ function addCountertopWithCutouts(){
   m.across=m.cx*row.v.x+m.cz*row.v.z;
   row.items.push(m);row.depth=Math.max(row.depth,m.d);
  });
+ const backsplashBounds=rows.map(r=>{
+  const us=r.items.map(m=>m.along),half=r.items.map(m=>m.w/2);
+  const minU=Math.min(...us.map((u,i)=>u-half[i])),maxU=Math.max(...us.map((u,i)=>u+half[i]));
+  const moduleBack=r.across-r.depth/2;
+  const wallBoundary=Math.abs(r.v.x)>.985?(r.v.x>0?roomLeft:-roomRight):(r.v.z>0?roomBack:-roomFront);
+  return {row:r,minU,maxU,minV:Math.max(moduleBack-40,wallBoundary+2)};
+ });
  const made=[];
  for(const row of rows){
-  const us=row.items.map(m=>m.along),halfWidths=row.items.map(m=>m.w/2);
-  const minU=Math.min(...us.map((u,i)=>u-halfWidths[i])),maxU=Math.max(...us.map((u,i)=>u+halfWidths[i]));
-  // Стеновая панель не удлиняется за габарит своего ряда:
-  // фиксированное добавление 600 мм приводило к выходу за границу стены.
-  const backsplashExtra=0,backsplashExtraSide=0;
+  const rowBounds=backsplashBounds[rows.indexOf(row)];
+  const {minU,maxU}=rowBounds;
   const countertopDepth=600; // Полная глубина столешницы вместе со скруглённой кромкой.
   const edgeRadius=10; // Скругление переднего края 10 мм; входит в общую глубину 600 мм.
-  const moduleBack=row.across-row.depth/2;
-  // Ограничиваем задний край плоскостью ближайшей стены, чтобы столешница не проходила сквозь неё.
-  const wallBoundary=Math.abs(row.v.x)>.985?(row.v.x>0?roomLeft:-roomRight):(row.v.z>0?roomBack:-roomFront);
-  const minV=Math.max(moduleBack-40,wallBoundary+2),maxV=minV+countertopDepth-edgeRadius,topY=Math.max(...row.items.map(m=>m.top));
+  const minV=rowBounds.minV,maxV=minV+countertopDepth-edgeRadius,topY=Math.max(...row.items.map(m=>m.top));
+  // Ищем фактическую стеновую панель перпендикулярного ряда. Удлинение
+  // заканчивается у её ближней грани, а не проходит сквозь неё и не обрывается у угла.
+  let backsplashExtra=0,backsplashExtraSide=0;
+  let nearestGap=Infinity;
+  for(const other of backsplashBounds){
+   if(other.row===row||Math.abs(row.u.x*other.row.u.x+row.u.z*other.row.u.z)>.15)continue;
+   const otherUs=other.row.items.map(m=>m.along),otherHalf=other.row.items.map(m=>m.w/2);
+   const otherMinU=Math.min(...otherUs.map((u,i)=>u-otherHalf[i])),otherMaxU=Math.max(...otherUs.map((u,i)=>u+otherHalf[i]));
+   const otherMinV=other.minV,otherMaxV=other.minV+16;
+   const corners=[[otherMinU,otherMinV],[otherMinU,otherMaxV],[otherMaxU,otherMinV],[otherMaxU,otherMaxV]];
+   const projected=corners.map(([u,v])=>({
+    x:(other.row.u.x*u+other.row.v.x*v)*row.u.x+(other.row.u.z*u+other.row.v.z*v)*row.u.z,
+    v:(other.row.u.x*u+other.row.v.x*v)*row.v.x+(other.row.u.z*u+other.row.v.z*v)*row.v.z
+   }));
+   const panelVMin=Math.min(...projected.map(p=>p.v)),panelVMax=Math.max(...projected.map(p=>p.v));
+   if(Math.min(minV+16,panelVMax)-Math.max(minV,panelVMin)<=0.5)continue;
+   const panelUMin=Math.min(...projected.map(p=>p.x)),panelUMax=Math.max(...projected.map(p=>p.x));
+   if(panelUMin>=maxU-0.5&&panelUMin-maxU<=600&&panelUMin-maxU<nearestGap){
+    nearestGap=panelUMin-maxU;backsplashExtra=nearestGap;backsplashExtraSide=1;
+   }
+   if(panelUMax<=minU+0.5&&minU-panelUMax<=600&&minU-panelUMax<nearestGap){
+    nearestGap=minU-panelUMax;backsplashExtra=nearestGap;backsplashExtraSide=-1;
+   }
+  }
   const shape=new THREE.Shape();
   shape.moveTo(minU,-minV);shape.lineTo(maxU,-minV);shape.lineTo(maxU,-maxV);shape.lineTo(minU,-maxV);shape.closePath();
   // Перпендикулярные ряды не должны занимать одну и ту же площадь в углу.
