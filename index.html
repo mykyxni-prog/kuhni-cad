@@ -537,8 +537,8 @@ function addCountertopWithCutouts(){
    const cornerAlong=corner.cx*row.u.x+corner.cz*row.u.z;
    const cornerAcross=corner.cx*row.v.x+corner.cz*row.v.z;
    if(Math.abs(cornerAcross-row.across)<1200){
-    if(cornerAlong>=maxU&&cornerAlong-maxU<1200){backsplashExtra=60;backsplashExtraSide=1}
-    else if(cornerAlong<=minU&&minU-cornerAlong<1200){backsplashExtra=60;backsplashExtraSide=-1}
+    if(cornerAlong>=maxU&&cornerAlong-maxU<1200){backsplashExtra=600;backsplashExtraSide=1}
+    else if(cornerAlong<=minU&&minU-cornerAlong<1200){backsplashExtra=600;backsplashExtraSide=-1}
    }
   }
   const countertopDepth=600; // Полная глубина столешницы вместе со скруглённой кромкой.
