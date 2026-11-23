@@ -479,6 +479,24 @@ function applyCountertopDecor(mesh,key){
  if(surfaceMat.map){setCountertopTextureScale(surfaceMat.map,size.w||600,size.d||600,key);surfaceMat.map.center.set(0,0)}
  const oldSurface=mesh.material;mesh.material=surfaceMat;mesh.userData.material=key;
  if(oldSurface&&oldSurface!==surfaceMat){oldSurface.map?.dispose?.();oldSurface.dispose?.()}
+ const topImage=mesh.children.find(child=>child.userData?.countertopTopImage);
+ if(topImage){
+  const oldTop=topImage.material;
+  if(surfaceMat.map){
+   const topTexture=surfaceMat.map.clone();
+   topTexture.wrapS=THREE.RepeatWrapping;topTexture.wrapT=THREE.RepeatWrapping;
+   topTexture.offset.set(0,0);topTexture.center.set(0,0);topTexture.rotation=0;
+   topTexture.repeat.set(1,1);topTexture.anisotropy=renderer.capabilities.getMaxAnisotropy();topTexture.needsUpdate=true;
+   topImage.material=new THREE.MeshBasicMaterial({map:topTexture,color:'#ffffff',toneMapped:false,side:THREE.DoubleSide});
+  }else{
+   mesh.remove(topImage);topImage.geometry.dispose();
+  }
+  oldTop?.map?.dispose?.();oldTop?.dispose?.();
+ }else if(surfaceMat.map){
+  const width=size.w||600,depth=size.d||600;
+  const topGeometry=new THREE.ShapeGeometry(mesh.geometry.parameters?.shapes||new THREE.Shape());
+  topGeometry.dispose();
+ }
  mesh.children.forEach(child=>{
   if(child.userData?.countertopSurface){
    const old=child.material;
@@ -593,15 +611,11 @@ function addCountertopWithCutouts(){
    const path=new THREE.Path();path.moveTo(left,-front);path.lineTo(left,-back);path.lineTo(right,-back);path.lineTo(right,-front);path.closePath();shape.holes.push(path);
   });
   const geo=new THREE.ExtrudeGeometry(shape,{depth:38,bevelEnabled:false,curveSegments:1});geo.rotateX(-Math.PI/2);
-  // Для верхней плоскости задаём UV по реальным миллиметрам столешницы:
-  // это не даёт декору исчезать или смещаться на большой плоскости.
-  const geoPos=geo.attributes.position,geoUv=geo.attributes.uv;
-  for(let vi=0;vi<geoPos.count;vi++){
-   if(Math.abs(geoPos.getY(vi)-38)<0.01){
-    geoUv.setXY(vi,(geoPos.getX(vi)-minU)/600,(geoPos.getZ(vi)-minV)/600);
-   }
-  }
-  geoUv.needsUpdate=true;
+  // Текстуру верхней плоскости наносим отдельной готовой плоской геометрией
+  // ShapeGeometry учитывает все вырезы, а UV задаются напрямую в координатах ряда.
+  // Поэтому поворот левого/правого ряда не меняет развёртку и не оставляет
+  // отдельные треугольники с исходными UV от ExtrudeGeometry.
+
   const style=oldStyles[made.length]||{},surfaceKey=style.material||'stone';
   const stoneMat=makeMaterial(surfaceKey,{w:maxU-minU,h:38,d:countertopDepth});
   // Верх столешницы использует исходную картинку как повторяемую плитку:
@@ -610,6 +624,28 @@ function addCountertopWithCutouts(){
   if(stoneMat.map){stoneMat.map.wrapS=THREE.RepeatWrapping;stoneMat.map.wrapT=THREE.RepeatWrapping;setCountertopTextureScale(stoneMat.map,maxU-minU,countertopDepth,surfaceKey);}
   const edgeMat=makeCountertopEdgeMaterial(stoneMat);
   const mesh=new THREE.Mesh(geo,stoneMat);
+  const topGeometry=new THREE.ShapeGeometry(shape);
+  const topPos=topGeometry.attributes.position,topUv=topGeometry.attributes.uv;
+  for(let vi=0;vi<topPos.count;vi++){
+   topUv.setXY(vi,(topPos.getX(vi)-minU)/600,(-topPos.getY(vi)-minV)/600);
+  }
+  topUv.needsUpdate=true;
+  topGeometry.rotateX(-Math.PI/2);
+  if(stoneMat.map){
+   const topTexture=stoneMat.map.clone();
+   topTexture.wrapS=THREE.RepeatWrapping;topTexture.wrapT=THREE.RepeatWrapping;
+   topTexture.offset.set(0,0);topTexture.center.set(0,0);topTexture.rotation=0;
+   // Один и тот же физический масштаб рисунка на обоих рядах: 600 мм на повтор.
+   topTexture.repeat.set(1,1);
+   topTexture.anisotropy=renderer.capabilities.getMaxAnisotropy();topTexture.needsUpdate=true;
+   const topMaterial=new THREE.MeshBasicMaterial({map:topTexture,color:'#ffffff',toneMapped:false,side:THREE.DoubleSide});
+   const topImage=new THREE.Mesh(topGeometry,topMaterial);
+   topImage.position.y=38.08;
+   topImage.userData.countertopTopImage=true;
+   mesh.add(topImage);
+  }else{
+   topGeometry.dispose();
+  }
   // Скругление 10 мм по верхнему и нижнему ребру передней кромки.
   // Вместе с кромкой общая глубина столешницы остаётся ровно 600 мм.
   const edgeLength=maxU-minU,edgeCenter=(minU+maxU)/2;
