@@ -1211,7 +1211,7 @@ function applyModuleDimensions(){
  const box=new THREE.Box3();body.forEach(p=>{p.updateMatrixWorld(true);box.expandByObject(p)});
  const oldSize=box.getSize(new THREE.Vector3()),center=box.getCenter(new THREE.Vector3());
  const oldModuleWidth=body.find(p=>Number.isFinite(p.userData.moduleWidth))?.userData.moduleWidth||Math.round(orientation?oldSize.z:oldSize.x);
- const oldModuleCenter=new THREE.Vector3((leftSide.position.x+rightSide.position.x)/2,0,(leftSide.position.z+rightSide.position.z)/2);
+ const oldModuleCenter=leftSide&&rightSide?new THREE.Vector3((leftSide.position.x+rightSide.position.x)/2,0,(leftSide.position.z+rightSide.position.z)/2):center.clone();
  let rowAxis=new THREE.Vector3(sideDX,0,sideDZ).normalize();
  // На левой стене направление ряда всегда идёт от угла комнаты вперёд (+Z).
  // Имена боковин после поворота дают обратный вектор, поэтому разворачиваем ось,
