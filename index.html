@@ -32,6 +32,35 @@
 <h3>Подсказка</h3><div class="muted">Чтобы сделать фасад 596 × 717 × 18 мм: нажми «Фасад», выбери его и введи размеры справа. Фасад не привязан к готовому шкафу и удаляется отдельно.</div>
 </section><div id="leftPanelResize" class="panel-resize left-resize" role="separator" aria-orientation="vertical" aria-label="Изменить ширину левой колонки" title="Потяни, чтобы изменить ширину левой колонки"></div><div id="rightPanelResize" class="panel-resize right-resize" role="separator" aria-orientation="vertical" aria-label="Изменить ширину правой колонки" title="Потяни, чтобы изменить ширину правой колонки"></div></main><div class="dialog-backdrop" id="moduleBackdrop"></div><div class="module-dialog" id="moduleDialog"><h2>Размеры модуля</h2><div class="field"><label for="dialogW">Ширина, мм</label><input id="dialogW" type="number" min="1"></div><div class="field"><label for="dialogH">Высота, мм</label><input id="dialogH" type="number" min="1"></div><div class="field"><label for="dialogD">Глубина, мм</label><input id="dialogD" type="number" min="1"></div><div class="actions" style="justify-content:space-between;margin:12px 0"><button class="btn" id="turnModuleLeft">↶ Развернуть влево</button><button class="btn" id="turnModuleRight">↷ Развернуть вправо</button></div><div class="actions"><button class="btn" id="cancelModuleDialog">Отмена</button><button class="btn primary" id="saveModuleDialog">Применить</button></div></div><div class="context-menu" id="contextMenu"><button id="ctxModuleEdit">↻ Повернуть / изменить размеры шкафа</button></div>
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script><script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}</script>
+<script>
+// MYKITCHEN_3D_DIAGNOSTICS: report startup failures without changing scene behavior.
+(function(){
+  const status=document.getElementById('status');
+  const report=(label,detail)=>{
+    if(!status)return;
+    const message=String(detail||'Неизвестная ошибка').replace(/\\s+/g,' ').slice(0,180);
+    status.textContent='● ОШИБКА 3D: '+label+(message?' — '+message:'');
+    status.style.color='#ff8f80';
+  };
+  window.addEventListener('error',event=>{
+    const target=event.target;
+    if(target&&target!==window){
+      const source=target.src||target.href||target.tagName||'ресурс';
+      report('не загрузился ресурс',source);
+      return;
+    }
+    report('JavaScript',event.message||event.error?.message||'ошибка выполнения');
+  },true);
+  window.addEventListener('unhandledrejection',event=>{
+    report('ошибка модуля',event.reason?.message||event.reason||'отклонён Promise');
+  });
+  window.setTimeout(()=>{
+    if(status&&status.textContent.includes('ЗАГРУЗКА 3D')){
+      report('модуль не завершил запуск','импорты или выполнение остановились до создания сцены');
+    }
+  },12000);
+})();
+</script>
 <script type="module">
 import * as THREE from 'three';
 import { buildDrawerModule, toggleDrawer } from './drawers.js?v=4drawers1';
