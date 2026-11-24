@@ -194,6 +194,7 @@ function capturePartUndoSnapshot(mesh){
   updateUndoButton();
  }catch(err){console.error('Не удалось сохранить отмену изменения детали',err);$('hint').textContent='Ошибка сохранения отмены: '+(err?.message||String(err))}
 }
+ function undoAction(){
  const state=undoStack.pop();if(!state)return;
  if(state.kind==='singlePart'){
   const x=state.parts[0],mesh=x.mesh;
