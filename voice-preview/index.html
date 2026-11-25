@@ -1485,54 +1485,98 @@ $('saveBtn').onclick=async()=>{
 $('openBtn').onclick=()=>$('projectFile').click();
 $('projectFile').addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;try{const data=JSON.parse(await file.text());if(data.format!=='kuhni-cad-project'||!Array.isArray(data.parts))throw new Error('Это не файл проекта конструктора');const loader=new THREE.ObjectLoader(),loaded=data.parts.map(item=>{if(item.object){const object=loader.parse(item.object);if(!object.userData) object.userData={};if(object.userData.hingeAssembly)object.userData.movingLink=object.children.find(child=>child!==object.children[0])||object.children[1]||null;return object}if(!item.geometry||!item.userData)throw new Error('В файле есть повреждённая деталь');const geometries=loader.parseGeometries([item.geometry]),geometry=geometries[item.geometry.uuid];if(!geometry)throw new Error('Не удалось восстановить геометрию детали: '+(item.userData.name||item.geometry.type||'без названия'));const mat=makeMaterial(item.userData.material||'milk',item.userData.size||{w:600,h:900,d:600},item.userData.name),mesh=new THREE.Mesh(geometry,mat);mesh.position.fromArray(item.position||[0,0,0]);if(item.quaternion)mesh.quaternion.fromArray(item.quaternion);else if(item.rotation)mesh.rotation.fromArray(item.rotation);mesh.scale.fromArray(item.scale||[1,1,1]);mesh.userData=item.userData;return mesh});parts.forEach(p=>{model.remove(p);p.geometry.dispose();if(Array.isArray(p.material))p.material.forEach(m=>m.dispose());else p.material?.dispose()});parts=loaded;parts.forEach(p=>model.add(p));nextId=Math.max(1,...parts.map(p=>Number(p.userData.partId)||0))+1;nextModuleId=Math.max(1,...parts.map(p=>Number(p.userData.moduleId)||0))+1;buildingModuleId=null;if(data.wallColor){$('wallColor').value=data.wallColor;wallMat.color.set(data.wallColor)}if(data.floorColor){$('floorColor').value=data.floorColor;floorMat.color.set(data.floorColor)}if(typeof data.roomOn==='boolean'){roomOn=data.roomOn;room.visible=roomOn;grid.visible=!roomOn;$('roomBtn').textContent='Комната: '+(roomOn?'вкл.':'выкл.');scene.background=new THREE.Color(roomOn?'#d8d3c9':'#303633')}selectPart(null);refreshList();$('hint').textContent='Проект открыт: загружено деталей — '+parts.length+'.';}catch(err){console.error(err);$('hint').textContent='Не удалось открыть проект: '+err.message;alert('Не удалось открыть проект. Проверь файл.\n'+err.message)}finally{e.target.value=''}});
 function executeVoiceCommand(raw){
- const text=String(raw||'').toLowerCase().replace(/ё/g,'е').replace(/,/g,'.').trim();
+ const text=String(raw||'').toLowerCase().replace(/ё/g,'е').replace(/,/g,'.').replace(/\\s+/g,' ').trim();
  const fail=message=>({ok:false,message}),done=message=>({ok:true,message});
+ const numberAfter=(word,fallback)=>{const m=text.match(new RegExp('(?:\\\\b'+word+'\\\\b)\\\\s*(?:на\\\\s*)?([0-9]+(?:\\\\.[0-9]+)?)'));return m?Math.round(+m[1]):fallback};
+ const dims={
+  w:numberAfter('ширин',800),h:numberAfter('высот',720),d:numberAfter('глубин',520)
+ };
+ const hasDims=/ширин|высот|глубин/.test(text);
+ const selectedModule=()=>selected?parts.filter(p=>p.userData.moduleId===selected.userData.moduleId):[];
+ const chooseModule=()=>{const group=selectedModule();if(!group.length)return false;selectPart(group.find(p=>p.userData.type!=='facade'&&p.userData.type!=='leg')||group[0],false);return true};
  if(/^(отмени|отмена|шаг назад|верни назад)/.test(text)){
   if(!undoStack.length)return fail('История отмены пуста.');
   undoAction();return done('Последнее действие отменено.');
  }
- if(/^(создай|добавь)\b/.test(text)){
-  const horizontal=/горизонтальн|полк/.test(text);
-  const dims=text.match(/([0-9]+(?:\.[0-9]+)?)\s*(?:на|х|икс)\s*([0-9]+(?:\.[0-9]+)?)(?:\s*(?:на|х|икс)\s*([0-9]+(?:\.[0-9]+)?))?/);
-  const thick=text.match(/толщин\w*\s*(?:на\s*)?([0-9]+)/);
-  const thickness=thick?+thick[1]:(dims&&dims[3]?+dims[3]:16);
-  const mesh=horizontal
-   ?addPart('shelf','Голосовая полка',600,16,500,0,900,0,'oak',16)
-   :addPart('panel','Голосовая деталь',600,720,18,0,900,0,'oak',18);
-  if(dims){
-   const a=+dims[1],b=+dims[2],c=dims[3]?+dims[3]:thickness;
-   $('partW').value=a;
-   $('partH').value=horizontal?thickness:b;
-   $('partD').value=horizontal?b:c;
-   $('partT').value=thickness;
-   applyProperties();
+ // Создание готовых мебельных модулей
+ if(/^(создай|добавь|сделай|поставь)\\b/.test(text)){
+  if(/(тумб|нижн\\w* шкаф|нижн\\w* модул)/.test(text)){
+   addCabinet(dims.w,dims.h,dims.d,true,true);return done('Создал нижнюю тумбу '+dims.w+' × '+dims.h+' × '+dims.d+' мм.');
   }
-  return done('Создана '+(horizontal?'горизонтальная':'вертикальная')+' деталь. Она выделена.');
+  if(/(навесн|верхн\\w* шкаф|верхн\\w* модул)/.test(text)){
+   addUpperCabinet(dims.w,numberAfter('высот',720),numberAfter('глубин',330));return done('Создал навесной шкаф.');
+  }
+  if(/(шкаф\\s*пенал|пенал|гардероб)/.test(text)){
+   addCabinet(dims.w,numberAfter('высот',2000),numberAfter('глубин',600),true,false);return done('Создал шкаф-пенал.');
+  }
+  if(/(ящик|ящик\\w*|выдвижн)/.test(text)){
+   const variant=/четыре|4 одинаков/.test(text)?'four':/большой|две маленьк|1 большой/.test(text)?'large-small-small':'two';
+   addDrawerCabinet(variant);return done('Создал модуль с '+(variant==='four'?'четырьмя':variant==='large-small-small'?'одним большим и двумя маленькими':'двумя')+' ящиками.');
+  }
+  if(/(вертикальн\\w* деталь|вертикальн\\w* панел|перегородк|боковин)/.test(text)||/^(создай|добавь)\\s+деталь/.test(text)){
+   captureUndoSnapshot();
+   const w=numberAfter('ширин',600),h=numberAfter('высот',720),d=numberAfter('глубин',18),th=numberAfter('толщин',18);
+   const mesh=addPart('panel','Голосовая вертикальная деталь',th,h,d,0,Math.max(h/2,900),0,'oak',th);
+   mesh.userData.size={w:th,h,d};mesh.geometry.dispose();mesh.geometry=new THREE.BoxGeometry(th,h,d);
+   return done('Создал вертикальную деталь '+th+' × '+h+' × '+d+' мм.');
+  }
+  if(/(горизонтальн\\w* деталь|полк|горизонтальн\\w* панел)/.test(text)){
+   captureUndoSnapshot();
+   const w=numberAfter('ширин',600),d=numberAfter('глубин',500),th=numberAfter('толщин',16);
+   const mesh=addPart('shelf','Голосовая полка',w,th,d,0,900,0,'oak',th);
+   return done('Создал полку '+w+' × '+th+' × '+d+' мм.');
+  }
+ }
+ // Команды, относящиеся к выбранному модулю
+ if(/(добавь|сделай|поставь).*(фасад|дверц)/.test(text)){
+  if(!selected)return fail('Сначала выбери шкаф в сцене.');
+  chooseModule();addByType('facade');return done('Добавил фасады выбранного шкафа.');
+ }
+ if(/(добавь|сделай|поставь).*(столешниц)/.test(text)){
+  addCountertopWithCutouts();return done('Добавил столешницу.');
+ }
+ if(/(открой|выдвинь).*(ящик)/.test(text)){
+  if(!selected)return fail('Сначала выбери фасад ящика.');
+  if(!individualMode||!selected.userData.drawerFront)return fail('Выбери фасад нужного ящика с Shift и повтори команду.');
+  toggleSelectedDrawer();return done('Переключил выбранный ящик.');
+ }
+ if(/(открой|распахни|закрой).*(дверц|фасад)/.test(text)){
+  if(!selected)return fail('Сначала выбери шкаф.');
+  toggleSelectedFacade();return done('Переключил дверцы выбранного шкафа.');
+ }
+ if(/^(отмени|удали|убери)\\s*(выбранн\\w*\\s*)?(модул|шкаф|тумб|детал)/.test(text)){
+  if(!selected)return fail('Сначала выбери, что удалить.');
+  removeSelected();return done('Выбранный объект удалён.');
+ }
+ if(/(ширин|высот|глубин).*(модул|шкаф|тумб)/.test(text)||/(измени|поставь|сделай).*(размер|габарит).*(модул|шкаф|тумб)/.test(text)){
+  if(!selected||individualMode)return fail('Сначала выбери модуль целиком, не отдельную деталь.');
+  $('moduleW').value=dims.w;$('moduleH').value=dims.h;$('moduleD').value=dims.d;
+  applyModuleDimensions();return done('Размеры модуля изменены: '+dims.w+' × '+dims.h+' × '+dims.d+' мм.');
  }
  const p=selected&&individualMode?selected:null;
- if(!p)return fail('Сначала выбери одну деталь с Shift или создай новую голосом.');
- const move=text.match(/(?:перемести|сдвинь|подвинь|передвинь)\s*(вправо|влево|вверх|вниз|вперед|назад|вперёд)\s*(?:на\s*)?([0-9]+(?:\.[0-9]+)?)/);
- const lift=text.match(/(подними|опусти)\s*(?:на\s*)?([0-9]+(?:\.[0-9]+)?)/);
- const dim=text.match(/(?:измени|поставь|сделай)\s*(ширину|высоту|глубину|толщину)\s*(?:на\s*)?([0-9]+(?:\.[0-9]+)?)/);
+ const move=text.match(/(?:перемести|сдвинь|подвинь|передвинь)\\s*(вправо|влево|вверх|вниз|вперед|назад|вперед)\\s*(?:на\\s*)?([0-9]+(?:\\.[0-9]+)?)/);
+ const lift=text.match(/(подними|опусти)\\s*(?:на\\s*)?([0-9]+(?:\\.[0-9]+)?)/);
+ const dim=text.match(/(?:измени|поставь|сделай|увеличь|уменьши)\\s*(ширину|высоту|глубину|толщину)\\s*(?:на\\s*)?([0-9]+(?:\\.[0-9]+)?)/);
+ if(!p)return fail('Сначала выбери одну деталь с Shift. Модуль можно создавать голосом без выбора.');
  if(move){
   const n=+move[2],dir=move[1];
   if(dir==='вправо')$('posX').value=+$('posX').value+n;
   if(dir==='влево')$('posX').value=+$('posX').value-n;
   if(dir==='вверх')$('posY').value=+$('posY').value+n;
   if(dir==='вниз')$('posY').value=+$('posY').value-n;
-  if(dir==='вперед'||dir==='вперёд')$('posZ').value=+$('posZ').value+n;
+  if(dir==='вперед')$('posZ').value=+$('posZ').value+n;
   if(dir==='назад')$('posZ').value=+$('posZ').value-n;
   applyProperties();return done('Положение детали изменено.');
  }
- if(lift){
-  $('posY').value=+$('posY').value+(lift[1]==='опусти'?-1:1)*(+lift[2]);
-  applyProperties();return done('Высота детали изменена.');
- }
+ if(lift){$('posY').value=+$('posY').value+(lift[1]==='опусти'?-1:1)*(+lift[2]);applyProperties();return done('Положение по высоте изменено.')}
  if(dim){
   const field={ширину:'partW',высоту:'partH',глубину:'partD',толщину:'partT'}[dim[1]];
-  $(field).value=+dim[2];applyProperties();return done('Размер детали изменён.');
+  const value=+dim[2];
+  $(field).value=/^уменьши/.test(text)?Math.max(1,(+$(field).value||1)-value):value;
+  applyProperties();return done('Размер детали изменён.');
  }
- return fail('Команды: создать деталь; изменить ширину, высоту, глубину или толщину; переместить вправо, влево, вперёд или назад; поднять, опустить; отменить.');
+ if(/^(помоги|команды|что умеешь)/.test(text))return done('Можно сказать: создай тумбу шириной 600 высотой 720 глубиной 520; создай навесной шкаф; добавь фасады; создай модуль с двумя ящиками; измени размеры модуля; перемести деталь; отмени.');
+ return fail('Не понял. Скажи «создай тумбу», «создай навесной шкаф», «добавь фасады», «создай два ящика» или «помощь».');
 }
 renderer.domElement.addEventListener('dblclick',e=>{const rect=renderer.domElement.getBoundingClientRect();pointer.x=((e.clientX-rect.left)/rect.width)*2-1;pointer.y=-((e.clientY-rect.top)/rect.height)*2+1;raycaster.setFromCamera(pointer,camera);const hits=raycaster.intersectObjects(parts,false);if(!hits.length)return;openModuleDialog(hits[0].object)});renderer.domElement.addEventListener('contextmenu',e=>{e.preventDefault();if(drag&&(e.buttons&1)){stopDrag();duplicateSelected();$('hint').textContent='Копия детали создана рядом.';return}const rect=renderer.domElement.getBoundingClientRect();pointer.x=((e.clientX-rect.left)/rect.width)*2-1;pointer.y=-((e.clientY-rect.top)/rect.height)*2+1;raycaster.setFromCamera(pointer,camera);const hits=raycaster.intersectObjects(parts,false);if(!hits.length){$('contextMenu').style.display='none';return}selectPart(hits[0].object,false);const menu=$('contextMenu');menu.style.left=Math.min(e.clientX,window.innerWidth-260)+'px';menu.style.top=Math.min(e.clientY,window.innerHeight-70)+'px';menu.style.display='block'});document.addEventListener('pointerdown',e=>{if(!$('contextMenu').contains(e.target))$('contextMenu').style.display='none'});$('ctxModuleEdit').onclick=()=>{$('contextMenu').style.display='none';openModuleDialog(selected)};function collidesAt(m,pos,ignoreIds){const old=m.position.clone();m.position.copy(pos);m.updateMatrixWorld(true);const box=new THREE.Box3().setFromObject(m);m.position.copy(old);m.updateMatrixWorld(true);return parts.some(q=>{if(q===m||ignoreIds.has(q)||q.userData.moduleId===m.userData.moduleId)return false;const qb=new THREE.Box3().setFromObject(q);return box.intersectsBox(qb)&&box.intersectsBox(qb).getSize(new THREE.Vector3()).length()>0.5})}
 renderer.domElement.addEventListener('pointerdown',e=>{if(e.button!==0)return;const rect=renderer.domElement.getBoundingClientRect();pointer.x=((e.clientX-rect.left)/rect.width)*2-1;pointer.y=-((e.clientY-rect.top)/rect.height)*2+1;raycaster.setFromCamera(pointer,camera);
