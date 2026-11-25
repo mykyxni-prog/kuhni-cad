@@ -1566,8 +1566,10 @@ function executeVoiceCommand(raw){
  }
  if(/(ширин|высот|глубин).*(модул|шкаф|тумб)/.test(text)){
   if(!selected||individualMode)return fail('Сначала выбери модуль целиком, не отдельную деталь.');
-  $('moduleW').value=dims.w;$('moduleH').value=dims.h;$('moduleD').value=dims.d;
-  applyModuleDimensions();return done('Размеры модуля изменены: '+dims.w+' × '+dims.h+' × '+dims.d+' мм.');
+  const current={w:+$('moduleW').value||dims.w,h:+$('moduleH').value||dims.h,d:+$('moduleD').value||dims.d};
+  const target={w:numberAfter('ширин',current.w),h:numberAfter('высот',current.h),d:numberAfter('глубин',current.d)};
+  $('moduleW').value=target.w;$('moduleH').value=target.h;$('moduleD').value=target.d;
+  applyModuleDimensions();return done('Размеры модуля изменены: '+target.w+' × '+target.h+' × '+target.d+' мм.');
  }
  const p=selected&&individualMode?selected:null;
  const move=text.match(/(?:перемести|сдвинь|подвинь|передвинь)\s*(вправо|влево|вверх|вниз|вперед|назад|вперед)\s*(?:на\s*)?([0-9]+(?:\.[0-9]+)?)/);
